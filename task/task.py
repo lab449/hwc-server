@@ -32,7 +32,7 @@ class Task():
     def __init__(self, task_config_filename: str):
         with open(task_config_filename) as json_config:
             task_config = json.load(json_config) 
-        with open('server_task_data/task_config_schema.json') as json_file:
+        with open('task/task_config_schema.json') as json_file:
             task_schema = json.load(json_file)
         validate(instance=task_config, schema=task_schema)
 
