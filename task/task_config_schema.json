@@ -7,75 +7,7 @@
         "cases": {
             "type": "array",
             "items":{
-                "type": "object",
-                "properties": {
-                    "parameters":{
-                        "type": "object",
-                        "patternProperties": {
-                            "^.*$": {
-                                "anyOf": [
-                                    {
-                                        "type": "number"
-                                    }, 
-                                    {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "number"
-                                        }
-                                    }
-                                ]
-                            }
-                        }
-                    },
-                    "answers": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "true_value": {
-                                "anyOf":[
-                                    {
-                                        "type": "number"
-                                    },
-                                    {
-                                        "type": "array",
-                                        "items":{
-                                            "type": "number"
-                                        }
-                                    }
-                                ]
-                            },
-                            "min_valid": {
-                                "type": "number"
-                            },
-                            "max_valid": {
-                                "type": "number"
-                            },
-                            "score": {
-                                "type": "number"
-                            }
-                        }
-                    },
-                    "files": {
-                        "anyOf":[
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "array",
-                                "items":{
-                                    "type": "string"
-                                }
-                            }
-                        ]
-                    }
-                },
-                "required":[
-                    "answers",
-                    "parameters",
-                    "files"
-                ]
+                "type": "object"
             }
         }
     }
