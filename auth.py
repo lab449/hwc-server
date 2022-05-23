@@ -64,7 +64,7 @@ class AuthHandler:
         self.__server_email.starttls()
         self.__server_email.login(self.__smtp_login, self.__smtp_pass)
 
-        self.db_client = MongoClient('mongodb://localhost:27017')
+        self.db_client = MongoClient('mongodb://{:s}:{:s}'.format(self.__db_server, str(self.__db_port)))
         self.__user_db = self.db_client['local-hdu']['InfoStudent']
         self.__user_case_assoc = self.db_client['local-hdu']['StudentsCases']
         self.__task_db = self.db_client['local-hdu']['StudentsAttempts']
@@ -81,6 +81,8 @@ class AuthHandler:
         if ok:
             gen_token = 0
             users = list(self.__user_db.find({"_id": user_data['id']}))
+            print(users)
+            reg = False
             if len(users) == 1:
                 user_info = copy.deepcopy(users[0])
                 if user_info['email'] != user_data['email']:
@@ -90,19 +92,20 @@ class AuthHandler:
                 dest_email = user_info['email']
             else:
                 gen_token = secrets.token_hex(16)
-                self.__user_db.insert_one({'_id': user_data['id'], 'name': user_data['name'], 'email': user_data['email'], 'token': gen_token})
-                email_text = 'Registration complete.\n Your HDU Key: ' + gen_token
                 dest_email = user_data['email']
+                reg = True
             try:
                 subject = 'HDULab'
-                
+                email_text = 'Registration complete.\n Your HDU Key: ' + gen_token
                 message = 'From: %s\nTo: %s\nSubject: %s\n\n%s' % (self.__smtp_login, dest_email, subject, email_text)
                 print(message)
                 # self.__server_email.set_debuglevel(1) # Необязательно; так будут отображаться данные с сервера в консоли
-                # self.__server_email.sendmail(self.__smtp_login, dest_email, message)
+                self.__server_email.sendmail(self.__smtp_login, dest_email, message)
             except:
                 ok = False
                 error_msg = "Something went wrong"
+            if reg:
+                self.__user_db.insert_one({'_id': user_data['id'], 'name': user_data['name'], 'email': user_data['email'], 'token': gen_token})
         return ok, error_msg
 
     def auth(self, user_data: dict) -> Tuple[bool, str]:
