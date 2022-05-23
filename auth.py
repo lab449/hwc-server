@@ -58,6 +58,9 @@ class AuthHandler:
             self.__db_port = config_dict['db_connect']['port']
             self.__smtp_login = config_dict['smtp_connect']['login']
             self.__smtp_pass = config_dict['smtp_connect']['pass']
+        
+        self.__host = config_dict['host']
+        self.__port = config_dict['port']
 
         self.__server_email = smtplib.SMTP('smtp.yandex.ru', 587)
         self.__server_email.ehlo() 
@@ -151,4 +154,11 @@ class AuthHandler:
             return None
         return out['task' + str(task_number)]
 
+    @property
+    def host(self) -> str:
+        return self.__host
+
+    @property
+    def port(self) -> int:
+        return self.__port
     
