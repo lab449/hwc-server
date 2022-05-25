@@ -118,8 +118,9 @@ def client_update():
 if __name__ == '__main__':
     # context = ('hdu2--cacert503.pem', 'localhost.pem')#certificate and key files
     # app.run(debug=True, ssl_context=context, host='127.0.0.1', port=port)
-    os.system('hmd2html -s less ../hwc-matlab-client/README.md -d ../html')
+    os.system('cd ../hwc-matlab-client && git pull && hmd2html -s README.md -d ../html')
     os.system('mv ../html/README.html /var/www/hdu/html/index.html')
+    os.system('rm -rv ../hwc-matlab-client/output')
     app.run(debug=True, host=auth.host, port=auth.port)
 
     
