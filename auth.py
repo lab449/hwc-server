@@ -106,6 +106,7 @@ class AuthHandler:
                 self.__server_email.sendmail(self.__smtp_login, dest_email, message)
             except:
                 ok = False
+                reg = False
                 error_msg = "Something went wrong"
             if reg:
                 self.__user_db.insert_one({'_id': user_data['id'], 'name': user_data['name'], 'email': user_data['email'], 'token': gen_token})
