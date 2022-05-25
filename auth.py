@@ -108,6 +108,7 @@ class AuthHandler:
                 ok = False
                 reg = False
                 error_msg = "Something went wrong"
+                print("Can not send message to Email: {:s}".format(dest_email))
             if reg:
                 self.__user_db.insert_one({'_id': user_data['id'], 'name': user_data['name'], 'email': user_data['email'], 'token': gen_token})
         return ok, error_msg
