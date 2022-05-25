@@ -12,7 +12,7 @@ from task import task
 ATTEMPS_LIMIT = 20
 
 auth = AuthHandler('auth_manager_config.json')
-task_list = (task.Task('server_task_data/test_task.json'),)
+task_list = (task.Task('server_task_data/test_task.json'), task.Task('server_task_data/test_task2.json'))
 
 app = Flask(__name__)
 
@@ -106,13 +106,13 @@ def client_update():
         logging.error('Failed to get task: '+ str(e))
         return jsonify(isError= True, message= 'Unknown task number', statusCode=404, data=''), 404
 
-@app.route('/files/<path:filename>')
-def download_file(filename):
-    return send_from_directory("../files", filename, as_attachment=True)
+#@app.route('/files/<path:filename>')
+#def download_file(filename):
+#    return send_from_directory("../files", filename, as_attachment=True)
 
-@app.route('/hwc-matlab-client/<path:filename>')
-def update_client(filename):
-    return send_from_directory("../hwc-matlab-client", filename, as_attachment=True)
+#@app.route('/hwc-matlab-client/<path:filename>')
+#def update_client(filename):
+#    return send_from_directory("../hwc-matlab-client", filename, as_attachment=True)
 
 
 if __name__ == '__main__':
