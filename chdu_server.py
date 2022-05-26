@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from task import task
 ATTEMPS_LIMIT = 20
+CLIENT_VERSION = None
 
 auth = AuthHandler('auth_manager_config.json')
 task_list = (task.Task('server_task_data/test_task.json'), task.Task('server_task_data/test_task2.json'))
@@ -96,15 +97,12 @@ def set_task():
 @app.route('/matlab_client_version', methods=['GET'])
 def client_update():
     try:
-        with open('../hwc-matlab-client/CHDU.m','rb') as f:
-            client_bytes = f.read()
-            f.close()
-        client_hash = {'md5': hashlib.md5(client_bytes).hexdigest()}
         # print(client_hash)
-        return jsonify(isError= False, message= 'Succes', statusCode=200, data=client_hash), 200
+        print(CLIENT_VERSION)
+        return jsonify(isError= False, message= 'Succes', statusCode=200, data=CLIENT_VERSION), 200
     except Exception as e: 
-        logging.error('Failed to get task: '+ str(e))
-        return jsonify(isError= True, message= 'Unknown task number', statusCode=404, data=''), 404
+        logging.error('Failed to get client version: '+ str(e))
+        return jsonify(isError= True, message= 'Something went wrong', statusCode=404, data=''), 404
 
 #@app.route('/files/<path:filename>')
 #def download_file(filename):
@@ -114,13 +112,19 @@ def client_update():
 #def update_client(filename):
 #    return send_from_directory("../hwc-matlab-client", filename, as_attachment=True)
 
+def get_client_version() -> dict:
+    with open('../hwc-matlab-client/CHDU.m','rb') as f:
+        client_bytes = f.read()
+        f.close()
+        return {'md5': hashlib.md5(client_bytes).hexdigest()}
 
 if __name__ == '__main__':
     # context = ('hdu2--cacert503.pem', 'localhost.pem')#certificate and key files
     # app.run(debug=True, ssl_context=context, host='127.0.0.1', port=port)
     os.system('cd ../hwc-matlab-client && git pull && hmd2html -s README.md -d ../html')
     os.system('mv ../html/README.html /var/www/hdu/html/index.html')
-    os.system('rm -rv ../hwc-matlab-client/output')
+    os.system('rm -rv ../html')
+    CLIENT_VERSION = get_client_version()
     app.run(debug=True, host=auth.host, port=auth.port)
 
     

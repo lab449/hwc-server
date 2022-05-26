@@ -104,10 +104,11 @@ class AuthHandler:
                 print(message)
                 # self.__server_email.set_debuglevel(1) # Необязательно; так будут отображаться данные с сервера в консоли
                 self.__server_email.sendmail(self.__smtp_login, dest_email, message)
-            except:
+            except Exception as e:
                 ok = False
                 reg = False
                 error_msg = "Something went wrong"
+                print(e)
                 print("Can not send message to Email: {:s}".format(dest_email))
             if reg:
                 self.__user_db.insert_one({'_id': user_data['id'], 'name': user_data['name'], 'email': user_data['email'], 'token': gen_token})
