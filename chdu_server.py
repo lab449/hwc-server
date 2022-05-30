@@ -13,7 +13,7 @@ ATTEMPS_LIMIT = 20
 CLIENT_VERSION = None
 
 auth = AuthHandler('auth_manager_config.json')
-task_list = (task.Task('server_task_data/test_task.json'), task.Task('server_task_data/test_task2.json'))
+task_list = (task.Task('server_task_data/lab1_tasks.json'), task.Task('server_task_data/test_task2.json'), task.Task('server_task_data/lab3_tasks.json'))
 
 app = Flask(__name__)
 

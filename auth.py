@@ -7,6 +7,8 @@ import os
 import logging
 import secrets
 
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from jsonschema import validate, ValidationError
 
 LOGIN_SCHEME = {
@@ -62,9 +64,15 @@ class AuthHandler:
         self.__host = config_dict['host']
         self.__port = config_dict['port']
 
-        self.__server_email = smtplib.SMTP('smtp.yandex.ru', 587)
-        self.__server_email.ehlo() 
-        self.__server_email.starttls()
+        smtp_port = config_dict['smtp_connect']['port']
+        if smtp_port == 587:
+            self.__server_email = smtplib.SMTP(config_dict['smtp_connect']['server'], smtp_port)
+            self.__server_email.ehlo() 
+            self.__server_email.starttls()
+        elif smtp_port == 465:
+            self.__server_email = smtplib.SMTP_SSL(config_dict['smtp_connect']['server'], smtp_port)
+        else:
+            raise('Invalid smtp port use 465 for SSL or 587 for TLS secure connection')
         self.__server_email.login(self.__smtp_login, self.__smtp_pass)
 
         self.db_client = MongoClient('mongodb://{:s}:{:s}'.format(self.__db_server, str(self.__db_port)))
@@ -88,22 +96,33 @@ class AuthHandler:
             reg = False
             if len(users) == 1:
                 user_info = copy.deepcopy(users[0])
-                if user_info['email'] != user_data['email']:
+                if user_info['email'] != user_data['email'].strip():
                     return False, "Given wrong registration email"
                 gen_token = user_info['token']
-                email_text = 'Key recovery complete.\n Your HDU Key: ' + gen_token
+                subject = 'Password reset'
+                #email_text = 'Key recovery complete.\n Your Key: ' + gen_token
                 dest_email = user_info['email']
+                msg = MIMEText ('<html> <body> <h2> Key recovery complete </h2>' +
+                        '<p>Your Key: {:s}</p>'.format(gen_token) +
+                        '</body></html>', 'html', 'utf-8')
             else:
                 gen_token = secrets.token_hex(16)
-                dest_email = user_data['email']
+                dest_email = user_data['email'].strip()
                 reg = True
+                subject = 'Confirm your email for your CHDU account'
+                msg = MIMEText ('<html> <body> <h2> Registration complete.  </h2>' +
+                        '<p>Your Key: {:s}</p>'.format(gen_token) +
+                        '</body></html>', 'html', 'utf-8')
             try:
-                subject = 'HDULab'
-                email_text = 'Registration complete.\n Your HDU Key: ' + gen_token
-                message = 'From: %s\nTo: %s\nSubject: %s\n\n%s' % (self.__smtp_login, dest_email, subject, email_text)
-                print(message)
+                msg['Subject'] = subject
+                msg['From'] = self.__smtp_login
+                msg['To'] = dest_email
+                #email_text = 'Registration complete.\n Your HDU Key: ' + gen_token
+                #message = 'From: %s\nTo: %s\nSubject: %s\n\n%s' % (self.__smtp_login, dest_email, subject, email_text)
+                print(msg.as_string())
                 # self.__server_email.set_debuglevel(1) # Необязательно; так будут отображаться данные с сервера в консоли
-                self.__server_email.sendmail(self.__smtp_login, dest_email, message)
+                print(dest_email, gen_token)
+                self.__server_email.sendmail(self.__smtp_login, dest_email, msg.as_string())
             except Exception as e:
                 ok = False
                 reg = False
@@ -164,4 +183,3 @@ class AuthHandler:
     @property
     def port(self) -> int:
         return self.__port
-    
