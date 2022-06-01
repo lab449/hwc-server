@@ -21,7 +21,7 @@ LOGIN_SCHEME = {
             "type": "string"
         },
         "id": {
-            "type": "string"
+            "type": "number"
         },
         "name": {
             "type": "string"
@@ -40,7 +40,7 @@ REGISTER_SCHEME = {
     "type": "object",
     "properties": {
         "id": {
-            "type": "string"
+            "type": "number"
         },
         "name": {
             "type": "string"
@@ -83,6 +83,14 @@ class AuthHandler:
     def register(self, user_data: dict) -> Tuple[bool, str]:
         ok = True
         error_msg = ""
+        user_id = user_data['id']
+        
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            error_msg = 'Student id should be a number'
+            ok = False
+
         try:
             validate(instance=user_data, schema=REGISTER_SCHEME)
         except ValidationError:
@@ -91,7 +99,7 @@ class AuthHandler:
         
         if ok:
             gen_token = 0
-            users = list(self.__user_db.find({"_id": user_data['id']}))
+            users = list(self.__user_db.find({"_id": user_id}))
             print(users)
             reg = False
             if len(users) == 1:
@@ -130,12 +138,13 @@ class AuthHandler:
                 print(e)
                 print("Can not send message to Email: {:s}".format(dest_email))
             if reg:
-                self.__user_db.insert_one({'_id': user_data['id'], 'name': user_data['name'], 'email': user_data['email'], 'token': gen_token})
+                self.__user_db.insert_one({'_id': user_id, 'name': user_data['name'], 'email': user_data['email'], 'token': gen_token})
         return ok, error_msg
 
     def auth(self, user_data: dict) -> Tuple[bool, str]:
         try:
             validate(instance=user_data, schema=LOGIN_SCHEME)
+            
             users = list(self.__user_db.find({"_id": user_data['id']}))
             print(user_data)
             if len(users) != 1:

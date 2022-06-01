@@ -9,7 +9,7 @@ from auth import AuthHandler
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from task import task
-ATTEMPS_LIMIT = 20
+ATTEMPS_LIMIT = 40
 CLIENT_VERSION = None
 
 auth = AuthHandler('auth_manager_config.json')
@@ -52,13 +52,14 @@ def get_task():
             user_data = request.json['auth']
             ok = auth.auth(user_data)
             if ok:
+                user_id = int(user_data['id'])
                 print(request.json)
                 task_number = int(request.json['number'])
-                case_number = auth.get_case_number(user_data['id'], task_number)
+                case_number = auth.get_case_number(user_id, task_number)
                 print(case_number)
                 if case_number is None:
                     case_number = task_list[task_number-1].generate_case_number()
-                    auth.set_case_number(user_data['id'], task_number, case_number)
+                    auth.set_case_number(user_id, task_number, case_number)
                 case = task_list[task_number-1].get_case(case_number)
                 return jsonify(isError= False, message= '', statusCode=200, data=case.jsonify()), 200
         except Exception as e: 
@@ -74,19 +75,20 @@ def set_task():
             user_data = request.json['auth']
             ok = auth.auth(user_data)
             if ok:
+                user_id = int(user_data['id'])
                 task_json= request.json['task']
                 task_number = int(task_json['number'])
-                count_attemps = auth.get_count_attemps(user_data['id'], task_number)
+                count_attemps = auth.get_count_attemps(user_id, task_number)
                 print(count_attemps)
                 if count_attemps >= ATTEMPS_LIMIT:
-                    best_score = auth.get_best_score(user_data['id'], task_number)
+                    best_score = auth.get_best_score(user_id, task_number)
                     return jsonify(isError= False, message= 'You\'ve run out of tries!(max={:d})\nYour max score:'.format(ATTEMPS_LIMIT), statusCode=200, data=best_score), 200
-                case_number = auth.get_case_number(user_data['id'], task_number)
+                case_number = auth.get_case_number(user_id, task_number)
                 if case_number is None:
                     return jsonify(isError= True, message= 'First you must get this task. You may have entered the wrong task number', statusCode=400, data=''), 200
                 case = task_list[task_number-1].get_case(case_number)
                 score = case.check(task_json['answers'])
-                auth.set_task(user_data['id'], case.jsonify(True), task_json, score.jsonify())
+                auth.set_task(user_id, case.jsonify(True), task_json, score.jsonify())
                 return jsonify(isError= False, message= 'You have {:d} attempts left'.format(ATTEMPS_LIMIT-count_attemps-1), statusCode=200, data=score.jsonify()), 200
         except Exception as e: 
             logging.error('Failed to send task: '+ str(e))
