@@ -4,6 +4,10 @@ import logging
 import os,sys
 import hashlib, pathlib
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+
 from auth import AuthHandler
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -17,6 +21,11 @@ auth = AuthHandler('auth_manager_config.json')
 task_list = (task.Task('server_task_data/lab1_tasks.json'), task.Task('server_task_data/empty_task.json'), task.Task('server_task_data/lab3_tasks.json'))
 
 app = Flask(__name__)
+limiter = Limiter(
+    app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour", "2 per second"]
+)
 
 @app.route('/ok', methods=['GET'])
 def ok():
@@ -30,6 +39,7 @@ def register():
         code, msg = auth.register(user_data)
         return jsonify(isError=(code!=200), message=msg, statusCode=code, data=msg)
     return jsonify(isError= True,  message='Comething went wrong', statusCode=400)
+
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -64,6 +74,7 @@ def get_task():
     return jsonify(isError= True, message= 'Something went wrong', statusCode=400)
 
 @app.route('/send_task', methods=['POST'])
+@limiter.limit("80/day")
 def set_task():
     content_type = request.headers.get('Content-Type')
     if 'application/json' in content_type:
