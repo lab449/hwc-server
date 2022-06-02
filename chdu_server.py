@@ -11,6 +11,7 @@ from task import task
 
 ATTEMPS_LIMIT = 40
 MATLAB_CLIENT_VERSION = None
+MATLAB_LAUNCHER_VERSION = None
 
 auth = AuthHandler('auth_manager_config.json')
 task_list = (task.Task('server_task_data/lab1_tasks.json'), task.Task('server_task_data/empty_task.json'), task.Task('server_task_data/lab3_tasks.json'))
@@ -97,18 +98,30 @@ def set_task():
 def client_update():
     return jsonify(isError= False, message= 'Succes', statusCode=200, data=MATLAB_CLIENT_VERSION)
 
+@app.route('/matlab_launcher_version', methods=['GET'])
+def client_update():
+    return jsonify(isError= False, message= 'Succes', statusCode=200, data=MATLAB_LAUNCHER_VERSION)
+
 def get_client_version() -> dict:
     with open('../hwc-matlab-client/CHDU.m','rb') as f:
         client_bytes = f.read()
         f.close()
         return {'md5': hashlib.md5(client_bytes).hexdigest()}
 
+def get_launcher_version() -> dict:
+    with open('../hwc-matlab-client/chdu_connect.m','rb') as f:
+        launcher_bytes = f.read()
+        f.close()
+        return {'md5': hashlib.md5(launcher_bytes).hexdigest()}
+
 def start():
     global MATLAB_CLIENT_VERSION
+    global MATLAB_LAUNCHER_VERSION
     os.system('cd ../hwc-matlab-client && git pull && hmd2html -s README.md -d ../html')
     os.system('mv ../html/README.html /var/www/hdu/html/index.html')
     os.system('rm -rv ../html')
     MATLAB_CLIENT_VERSION = get_client_version()
+    MATLAB_LAUNCHER_VERSION = get_launcher_version()
 
 if __name__ == '__main__':
     # context = ('hdu2--cacert503.pem', 'localhost.pem')#certificate and key files
