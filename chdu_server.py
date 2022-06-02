@@ -13,9 +13,22 @@ from auth import AuthHandler
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from task import task
 
+def get_file_version(filename: str) -> dict:
+    with open(filename,'rb') as f:
+        client_bytes = f.read()
+        f.close()
+        return {'md5': hashlib.md5(client_bytes).hexdigest()}
+
+
+def start():
+    os.system('cd ../hwc-matlab-client && git pull && hmd2html -s README.md -d ../html')
+    os.system('mv ../html/README.html /var/www/hdu/html/index.html')
+    os.system('rm -rv ../html')
+    return get_file_version('../hwc-matlab-client/CHDU.m'), get_file_version('../hwc-matlab-client/chdu_connect.m')
+
+
 ATTEMPS_LIMIT = 40
-MATLAB_CLIENT_VERSION = None
-MATLAB_LAUNCHER_VERSION = None
+MATLAB_CLIENT_VERSION, MATLAB_LAUNCHER_VERSION = start()
 
 auth = AuthHandler('auth_manager_config.json')
 task_list = (task.Task('server_task_data/lab1_tasks.json'), task.Task('server_task_data/empty_task.json'), task.Task('server_task_data/lab3_tasks.json'))
@@ -27,11 +40,11 @@ limiter = Limiter(
     default_limits=["400 per day", "100 per hour", "1 per second"]
 )
 
-@app.route('/ok', methods=['GET'])
+@app.route('/api/ok', methods=['GET'])
 def ok():
     return jsonify(isError= False, message= "OK", statusCode=200, data='')
 
-@app.route('/register', methods=['POST'])
+@app.route('/api/register', methods=['POST'])
 def register():
     content_type = request.headers.get('Content-Type')
     if 'application/json' in content_type:
@@ -41,7 +54,7 @@ def register():
     return jsonify(isError= True,  message='Comething went wrong', statusCode=400)
 
 
-@app.route('/login', methods=['POST'])
+@app.route('/api/login', methods=['POST'])
 def login():
     content_type = request.headers.get('Content-Type')
     if 'application/json' in content_type:
@@ -50,7 +63,7 @@ def login():
         return jsonify(isError=(code!=200), message=msg, statusCode=code, data=msg)
     return jsonify(isError=True, statusCode=400, message="Something went wrong")
 
-@app.route('/gettask', methods=['POST'])
+@app.route('/api/gettask', methods=['POST'])
 def get_task():
     content_type = request.headers.get('Content-Type')
     if 'application/json' in content_type:
@@ -73,7 +86,7 @@ def get_task():
 
     return jsonify(isError= True, message= 'Something went wrong', statusCode=400)
 
-@app.route('/send_task', methods=['POST'])
+@app.route('/api/send_task', methods=['POST'])
 @limiter.limit("80/day")
 def set_task():
     content_type = request.headers.get('Content-Type')
@@ -106,40 +119,17 @@ def set_task():
     return jsonify(isError= True, message= 'Something went wrong', statusCode=400)
 
 
-@app.route('/matlab_client_version', methods=['GET'])
+@app.route('/api/matlab_client_version', methods=['GET'])
 def client_version():
     return jsonify(isError= False, message= 'Succes', statusCode=200, data=MATLAB_CLIENT_VERSION)
 
-@app.route('/matlab_launcher_version', methods=['GET'])
+@app.route('/api/matlab_launcher_version', methods=['GET'])
 def launcher_version():
     return jsonify(isError= False, message= 'Succes', statusCode=200, data=MATLAB_LAUNCHER_VERSION)
-
-def get_client_version() -> dict:
-    with open('../hwc-matlab-client/CHDU.m','rb') as f:
-        client_bytes = f.read()
-        f.close()
-        return {'md5': hashlib.md5(client_bytes).hexdigest()}
-
-def get_launcher_version() -> dict:
-    with open('../hwc-matlab-client/chdu_connect.m','rb') as f:
-        launcher_bytes = f.read()
-        f.close()
-        return {'md5': hashlib.md5(launcher_bytes).hexdigest()}
-
-def start():
-    global MATLAB_CLIENT_VERSION
-    global MATLAB_LAUNCHER_VERSION
-    os.system('cd ../hwc-matlab-client && git pull && hmd2html -s README.md -d ../html')
-    os.system('mv ../html/README.html /var/www/hdu/html/index.html')
-    os.system('rm -rv ../html')
-    MATLAB_CLIENT_VERSION = get_client_version()
-    MATLAB_LAUNCHER_VERSION = get_launcher_version()
-    print(MATLAB_LAUNCHER_VERSION)
 
 if __name__ == '__main__':
     # context = ('hdu2--cacert503.pem', 'localhost.pem')#certificate and key files
     # app.run(debug=True, ssl_context=context, host='127.0.0.1', port=port)
-    start()
     app.run(debug=True, host=auth.host, port=auth.port)
 
     

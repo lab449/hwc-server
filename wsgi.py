@@ -1,6 +1,5 @@
-from chdu_server import app, start
+from chdu_server import app
 
 if __name__ == "__main__":
-    start()
     app.run()
 
