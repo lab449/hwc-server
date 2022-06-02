@@ -28,6 +28,7 @@ def register():
     if 'application/json' in content_type:
         user_data = request.json['auth']
         code, msg = auth.register(user_data)
+        print((code==200))
         return jsonify(isError=(code==200), message=msg, statusCode=code, data=msg)
     return jsonify(isError= True,  message='Comething went wrong', statusCode=400)
 
@@ -48,6 +49,7 @@ def get_task():
             user_data = request.json['auth']
             code, msg = auth.auth(user_data)
             if code!=200:
+                logging.error('Authentification errors: %s',  user_data)
                 return jsonify(isError=True, message=msg, statusCode=code)
             task_number = int(request.json['number'])
             case_number = auth.get_case_number(user_data['_id'], task_number)
@@ -57,7 +59,7 @@ def get_task():
             case = task_list[task_number-1].get_case(case_number)
             return jsonify(isError=True, message='', statusCode=code, data=case.jsonify())
         except Exception as e: 
-            logging.error('Failed to get task. Error code: '+ str(e))
+            logging.error('Failed to get task. Error code: %s', str(e))
             return jsonify(isError= True, message= 'Task not found', statusCode=404)
 
     return jsonify(isError= True, message= 'Something went wrong', statusCode=400)
@@ -74,7 +76,7 @@ def set_task():
         try:
             task_number = int(task_json['number'])
         except Exception as e: 
-            logging.error('Failed to send task: '+ str(e))
+            logging.error('Failed to send task: %s', str(e))
             return jsonify(isError=True, message='Unknown task number', statusCode=400)
         
         count_attemps = auth.get_count_attemps(user_data['_id'], task_number)
