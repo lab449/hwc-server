@@ -90,7 +90,7 @@ def set_task():
         case = task_list[task_number-1].get_case(case_number)
         score = case.check(task_json['answers'])
         auth.set_task(user_data['_id'], case.jsonify(True), task_json, score.jsonify())
-        return jsonify(isError= True, message='You have {:d} attempts left'.format(ATTEMPS_LIMIT-count_attemps-1), statusCode=code, data=score.jsonify())
+        return jsonify(isError= False, message='You have {:d} attempts left'.format(ATTEMPS_LIMIT-count_attemps-1), statusCode=code, data=score.jsonify())
         
     return jsonify(isError= True, message= 'Something went wrong', statusCode=400)
 
@@ -123,6 +123,7 @@ def start():
     os.system('rm -rv ../html')
     MATLAB_CLIENT_VERSION = get_client_version()
     MATLAB_LAUNCHER_VERSION = get_launcher_version()
+    print(MATLAB_LAUNCHER_VERSION)
 
 if __name__ == '__main__':
     # context = ('hdu2--cacert503.pem', 'localhost.pem')#certificate and key files
