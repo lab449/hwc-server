@@ -24,7 +24,7 @@ app = Flask(__name__)
 limiter = Limiter(
     app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour", "2 per second"]
+    default_limits=["400 per day", "100 per hour", "1 per second"]
 )
 
 @app.route('/ok', methods=['GET'])
