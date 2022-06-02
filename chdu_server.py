@@ -120,13 +120,17 @@ def get_client_version() -> dict:
         f.close()
         return {'md5': hashlib.md5(client_bytes).hexdigest()}
 
-if __name__ == '__main__':
-    # context = ('hdu2--cacert503.pem', 'localhost.pem')#certificate and key files
-    # app.run(debug=True, ssl_context=context, host='127.0.0.1', port=port)
+def start():
+    global CLIENT_VERSION
     os.system('cd ../hwc-matlab-client && git pull && hmd2html -s README.md -d ../html')
     os.system('mv ../html/README.html /var/www/hdu/html/index.html')
     os.system('rm -rv ../html')
     CLIENT_VERSION = get_client_version()
+
+if __name__ == '__main__':
+    # context = ('hdu2--cacert503.pem', 'localhost.pem')#certificate and key files
+    # app.run(debug=True, ssl_context=context, host='127.0.0.1', port=port)
+    start()
     app.run(debug=True, host=auth.host, port=auth.port)
 
     
