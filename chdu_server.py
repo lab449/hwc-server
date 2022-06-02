@@ -19,29 +19,25 @@ app = Flask(__name__)
 
 @app.route('/ok', methods=['GET'])
 def ok():
-    return jsonify(isError= False, message= "OK", statusCode=200, data=''), 200
+    return jsonify(isError= False, message= "OK", statusCode=200, data='')
 
 @app.route('/register', methods=['POST'])
 def register():
     content_type = request.headers.get('Content-Type')
     if 'application/json' in content_type:
         user_data = request.json['auth']
-        ok, msg = auth.register(user_data)
-        if ok:
-            return jsonify(isError= False, message= msg, statusCode=200, data=msg), 200
-    out = jsonify(isError= True,  message=msg, statusCode=404, data=msg), 404
-    return out 
+        code, msg = auth.register(user_data)
+        return jsonify(isError=(code==200), message=msg, statusCode=code, data=msg)
+    return jsonify(isError= True,  message='Comething went wrong', statusCode=400)
 
 @app.route('/login', methods=['POST'])
 def login():
     content_type = request.headers.get('Content-Type')
     if 'application/json' in content_type:
         user_data = request.json['auth']
-        ok, msg = auth.auth(user_data)
-        if ok:
-            return jsonify(isError= False, message=msg, statusCode=200, data=msg), 200
-        return jsonify(isError= True, message=msg, statusCode=401, data=msg), 401
-    return jsonify(isError= True,  message="Something went wrong", statusCode=404, data="Something went wrong"), 404
+        code, msg = auth.auth(user_data)
+        return jsonify(isError=(code==200), message=msg, statusCode=code, data=msg)
+    return jsonify(isError=True, statusCode=400, message="Something went wrong")
 
 @app.route('/gettask', methods=['POST'])
 def get_task():
@@ -49,56 +45,57 @@ def get_task():
     if 'application/json' in content_type:
         try:
             user_data = request.json['auth']
-            ok = auth.auth(user_data)
-            if ok:
-                user_id = int(user_data['id'])
-                task_number = int(request.json['number'])
-                case_number = auth.get_case_number(user_id, task_number)
-                if case_number is None:
-                    case_number = task_list[task_number-1].generate_case_number()
-                    auth.set_case_number(user_id, task_number, case_number)
-                case = task_list[task_number-1].get_case(case_number)
-                return jsonify(isError= False, message= '', statusCode=200, data=case.jsonify()), 200
+            code, msg = auth.auth(user_data)
+            if code!=200:
+                return jsonify(isError=True, message=msg, statusCode=code)
+            task_number = int(request.json['number'])
+            case_number = auth.get_case_number(user_data['_id'], task_number)
+            if case_number is None:
+                case_number = task_list[task_number-1].generate_case_number()
+                auth.set_case_number(user_data['_id'], task_number, case_number)
+            case = task_list[task_number-1].get_case(case_number)
+            return jsonify(isError=True, message='', statusCode=code, data=case.jsonify())
         except Exception as e: 
             logging.error('Failed to get task. Error code: '+ str(e))
-            return jsonify(isError= True, message= 'Unknown task number', statusCode=404, data=''), 404
-    return jsonify(isError= True, message= 'Something went wrong', statusCode=400, data=''), 404
+            return jsonify(isError= True, message= 'Task not found', statusCode=404)
+
+    return jsonify(isError= True, message= 'Something went wrong', statusCode=400)
 
 @app.route('/send_task', methods=['POST'])
 def set_task():
     content_type = request.headers.get('Content-Type')
     if 'application/json' in content_type:
+        user_data = request.json['auth']
+        code, msg = auth.auth(user_data)
+        if code!=200:
+            return jsonify(isError=True, message=msg, statusCode=code)
+        task_json= request.json['task']
         try:
-            user_data = request.json['auth']
-            ok = auth.auth(user_data)
-            if ok:
-                user_id = int(user_data['id'])
-                task_json= request.json['task']
-                task_number = int(task_json['number'])
-                count_attemps = auth.get_count_attemps(user_id, task_number)
-                if count_attemps >= ATTEMPS_LIMIT:
-                    best_score = auth.get_best_score(user_id, task_number)
-                    return jsonify(isError= False, message= 'You\'ve run out of tries!(max={:d})\nYour max score:'.format(ATTEMPS_LIMIT), statusCode=200, data=best_score), 200
-                case_number = auth.get_case_number(user_id, task_number)
-                if case_number is None:
-                    return jsonify(isError= True, message= 'First you must get this task. You may have entered the wrong task number', statusCode=400, data=''), 200
-                case = task_list[task_number-1].get_case(case_number)
-                score = case.check(task_json['answers'])
-                auth.set_task(user_id, case.jsonify(True), task_json, score.jsonify())
-                return jsonify(isError= False, message= 'You have {:d} attempts left'.format(ATTEMPS_LIMIT-count_attemps-1), statusCode=200, data=score.jsonify()), 200
+            task_number = int(task_json['number'])
         except Exception as e: 
             logging.error('Failed to send task: '+ str(e))
-            return jsonify(isError= True, message= 'Unknown task number', statusCode=404, data=''), 404
-    return jsonify(isError= True, message= 'Something went wrong', statusCode=400, data=''), 404
+            return jsonify(isError=True, message='Unknown task number', statusCode=400)
+        
+        count_attemps = auth.get_count_attemps(user_data['_id'], task_number)
+        if count_attemps >= ATTEMPS_LIMIT:
+            best_score = auth.get_best_score(user_data['_id'], task_number)
+            return jsonify(isError=False, message= 'You\'ve run out of tries!(max={:d})\nYour max score:'.format(ATTEMPS_LIMIT), statusCode=200, data=best_score)
+
+        case_number = auth.get_case_number(user_data['_id'], task_number)
+        if case_number is None:
+            return jsonify(isError= True, message= 'First you must get this task. You may have entered the wrong task number', statusCode=400)
+
+        case = task_list[task_number-1].get_case(case_number)
+        score = case.check(task_json['answers'])
+        auth.set_task(user_data['_id'], case.jsonify(True), task_json, score.jsonify())
+        return jsonify(isError= True, message='You have {:d} attempts left'.format(ATTEMPS_LIMIT-count_attemps-1), statusCode=code, data=score.jsonify())
+        
+    return jsonify(isError= True, message= 'Something went wrong', statusCode=400)
 
 
 @app.route('/matlab_client_version', methods=['GET'])
 def client_update():
-    try:
-        return jsonify(isError= False, message= 'Succes', statusCode=200, data=MATLAB_CLIENT_VERSION), 200
-    except Exception as e: 
-        logging.error('Failed to get client version: '+ str(e))
-        return jsonify(isError= True, message= 'Something went wrong', statusCode=404, data=''), 404
+    return jsonify(isError= False, message= 'Succes', statusCode=200, data=MATLAB_CLIENT_VERSION)
 
 def get_client_version() -> dict:
     with open('../hwc-matlab-client/CHDU.m','rb') as f:

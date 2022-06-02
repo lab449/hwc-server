@@ -67,33 +67,31 @@ class AuthHandler:
         self.__user_case_assoc = self.db_client['local-hdu']['StudentsCases']
         self.__task_db = self.db_client['local-hdu']['StudentsAttempts']
         
-    def register(self, user_data: dict) -> Tuple[bool, str]:
+    def register(self, user_data: dict) -> Tuple[int, str]:
         if not self.__prepare_user_data(user_data):
             return False, "Given invalid information for registration"
-
         users = list(self.__user_db.find({"_id": user_data['_id']}))
         if len(users) == 1:
             user_info = copy.deepcopy(users[0])
             if user_info['email'] != user_data['email']:
-                return False, "Given wrong registration email"
+                return 401, "Given wrong registration email"
             elif user_info['password'] != user_data['password']:
-                return False, "Given wrong registration password"
-            return True, 'Authentification complete'
+                return 403, "Given wrong registration password"
+            return 200, 'Authentification complete'
         self.__user_db.insert_one(user_data)
-        return True, 'Registration complete'
+        return 200, 'Registration complete'
 
-    def auth(self, user_data: dict) -> Tuple[bool, str]:
+    def auth(self, user_data: dict) -> Tuple[int, str]:
         if not self.__prepare_user_data(user_data):
-            return False, "Given invalid information for authentification"
-
-        users = list(self.__user_db.find({"_id": user_data['id']}))
+            return 401, "Given invalid information for authentification"
+        users = list(self.__user_db.find({"_id": user_data['_id']}))
         if len(users) != 1:
             logging.error('Logging error. User with id {:s} not found'.format(user_data['id']))
-            return False, 'Unknown user. Please reset chdu connection and register'
+            return 404, 'Unknown user. Please reset chdu connection and register'
         if users[0]['password'] != user_data['password']:
             logging.error('Logging error. Invalid password')
-            return False, 'Invalid password'
-        return True, 'Authentification complete'
+            return 403, 'Invalid password'
+        return 200, 'Authentification complete'
     
     def set_case_number(self, user_id: int, task_number: int, case_number: int) -> bool:
         out = self.__user_case_assoc.find_one_and_update({"_id": user_id}, {"$set":{"task"+str(task_number): case_number} })
