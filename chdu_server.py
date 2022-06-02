@@ -95,11 +95,11 @@ def set_task():
 
 
 @app.route('/matlab_client_version', methods=['GET'])
-def client_update():
+def client_version():
     return jsonify(isError= False, message= 'Succes', statusCode=200, data=MATLAB_CLIENT_VERSION)
 
 @app.route('/matlab_launcher_version', methods=['GET'])
-def client_update():
+def launcher_version():
     return jsonify(isError= False, message= 'Succes', statusCode=200, data=MATLAB_LAUNCHER_VERSION)
 
 def get_client_version() -> dict:
