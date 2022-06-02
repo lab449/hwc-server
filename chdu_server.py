@@ -7,13 +7,13 @@ import hashlib, pathlib
 from auth import AuthHandler
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from task import task
+
 ATTEMPS_LIMIT = 40
-CLIENT_VERSION = None
+MATLAB_CLIENT_VERSION = None
 
 auth = AuthHandler('auth_manager_config.json')
-task_list = (task.Task('server_task_data/lab1_tasks.json'), task.Task('server_task_data/test_task2.json'), task.Task('server_task_data/lab3_tasks.json'))
+task_list = (task.Task('server_task_data/lab1_tasks.json'), task.Task('server_task_data/empty_task.json'), task.Task('server_task_data/lab3_tasks.json'))
 
 app = Flask(__name__)
 
@@ -28,7 +28,6 @@ def register():
         user_data = request.json['auth']
         ok, msg = auth.register(user_data)
         if ok:
-            # print('Register complete')
             return jsonify(isError= False, message= msg, statusCode=200, data=msg), 200
     out = jsonify(isError= True,  message=msg, statusCode=404, data=msg), 404
     return out 
@@ -53,10 +52,8 @@ def get_task():
             ok = auth.auth(user_data)
             if ok:
                 user_id = int(user_data['id'])
-                print(request.json)
                 task_number = int(request.json['number'])
                 case_number = auth.get_case_number(user_id, task_number)
-                print(case_number)
                 if case_number is None:
                     case_number = task_list[task_number-1].generate_case_number()
                     auth.set_case_number(user_id, task_number, case_number)
@@ -79,7 +76,6 @@ def set_task():
                 task_json= request.json['task']
                 task_number = int(task_json['number'])
                 count_attemps = auth.get_count_attemps(user_id, task_number)
-                print(count_attemps)
                 if count_attemps >= ATTEMPS_LIMIT:
                     best_score = auth.get_best_score(user_id, task_number)
                     return jsonify(isError= False, message= 'You\'ve run out of tries!(max={:d})\nYour max score:'.format(ATTEMPS_LIMIT), statusCode=200, data=best_score), 200
@@ -99,20 +95,10 @@ def set_task():
 @app.route('/matlab_client_version', methods=['GET'])
 def client_update():
     try:
-        # print(client_hash)
-        print(CLIENT_VERSION)
-        return jsonify(isError= False, message= 'Succes', statusCode=200, data=CLIENT_VERSION), 200
+        return jsonify(isError= False, message= 'Succes', statusCode=200, data=MATLAB_CLIENT_VERSION), 200
     except Exception as e: 
         logging.error('Failed to get client version: '+ str(e))
         return jsonify(isError= True, message= 'Something went wrong', statusCode=404, data=''), 404
-
-#@app.route('/files/<path:filename>')
-#def download_file(filename):
-#    return send_from_directory("../files", filename, as_attachment=True)
-
-#@app.route('/hwc-matlab-client/<path:filename>')
-#def update_client(filename):
-#    return send_from_directory("../hwc-matlab-client", filename, as_attachment=True)
 
 def get_client_version() -> dict:
     with open('../hwc-matlab-client/CHDU.m','rb') as f:
@@ -121,11 +107,11 @@ def get_client_version() -> dict:
         return {'md5': hashlib.md5(client_bytes).hexdigest()}
 
 def start():
-    global CLIENT_VERSION
+    global MATLAB_CLIENT_VERSION
     os.system('cd ../hwc-matlab-client && git pull && hmd2html -s README.md -d ../html')
     os.system('mv ../html/README.html /var/www/hdu/html/index.html')
     os.system('rm -rv ../html')
-    CLIENT_VERSION = get_client_version()
+    MATLAB_CLIENT_VERSION = get_client_version()
 
 if __name__ == '__main__':
     # context = ('hdu2--cacert503.pem', 'localhost.pem')#certificate and key files

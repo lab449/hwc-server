@@ -17,7 +17,7 @@ LOGIN_SCHEME = {
     "description": "Scheme for verification auth_data message form",
     "type": "object",
     "properties": {
-        "token": {
+        "password": {
             "type": "string"
         },
         "id": {
@@ -30,7 +30,7 @@ LOGIN_SCHEME = {
             "type": "string"
         }
     },
-    "required": ["id", "name", "email", "token"]  
+    "required": ["id", "name", "email", "password"]  
 }
 
 REGISTER_SCHEME = {
@@ -58,22 +58,9 @@ class AuthHandler:
             config_dict = json.load(conf)
             self.__db_server = config_dict['db_connect']['host']
             self.__db_port = config_dict['db_connect']['port']
-            self.__smtp_login = config_dict['smtp_connect']['login']
-            self.__smtp_pass = config_dict['smtp_connect']['pass']
         
         self.__host = config_dict['host']
         self.__port = config_dict['port']
-
-        smtp_port = config_dict['smtp_connect']['port']
-        if smtp_port == 587:
-            self.__server_email = smtplib.SMTP(config_dict['smtp_connect']['server'], smtp_port)
-            self.__server_email.ehlo() 
-            self.__server_email.starttls()
-        elif smtp_port == 465:
-            self.__server_email = smtplib.SMTP_SSL(config_dict['smtp_connect']['server'], smtp_port)
-        else:
-            raise('Invalid smtp port use 465 for SSL or 587 for TLS secure connection')
-        self.__server_email.login(self.__smtp_login, self.__smtp_pass)
 
         self.db_client = MongoClient('mongodb://{:s}:{:s}'.format(self.__db_server, str(self.__db_port)))
         self.__user_db = self.db_client['local-hdu']['InfoStudent']
@@ -81,81 +68,32 @@ class AuthHandler:
         self.__task_db = self.db_client['local-hdu']['StudentsAttempts']
         
     def register(self, user_data: dict) -> Tuple[bool, str]:
-        ok = True
-        error_msg = ""
-        user_id = user_data['id']
-        
-        try:
-            user_id = int(user_id)
-        except ValueError:
-            error_msg = 'Student id should be a number'
-            ok = False
+        if not self.__prepare_user_data(user_data):
+            return False, "Given invalid information for registration"
 
-        try:
-            validate(instance=user_data, schema=REGISTER_SCHEME)
-        except ValidationError:
-            ok = False
-            error_msg = "Invalid user data"
-        
-        if ok:
-            gen_token = 0
-            users = list(self.__user_db.find({"_id": user_id}))
-            print(users)
-            reg = False
-            if len(users) == 1:
-                user_info = copy.deepcopy(users[0])
-                if user_info['email'] != user_data['email'].strip():
-                    return False, "Given wrong registration email"
-                gen_token = user_info['token']
-                subject = 'Password reset'
-                #email_text = 'Key recovery complete.\n Your Key: ' + gen_token
-                dest_email = user_info['email']
-                msg = MIMEText ('<html> <body> <h2> Key recovery complete </h2>' +
-                        '<p>Your Key: {:s}</p>'.format(gen_token) +
-                        '</body></html>', 'html', 'utf-8')
-            else:
-                gen_token = secrets.token_hex(16)
-                dest_email = user_data['email'].strip()
-                reg = True
-                subject = 'Confirm your email for your CHDU account'
-                msg = MIMEText ('<html> <body> <h2> Registration complete.  </h2>' +
-                        '<p>Your Key: {:s}</p>'.format(gen_token) +
-                        '</body></html>', 'html', 'utf-8')
-            try:
-                msg['Subject'] = subject
-                msg['From'] = self.__smtp_login
-                msg['To'] = dest_email
-                #email_text = 'Registration complete.\n Your HDU Key: ' + gen_token
-                #message = 'From: %s\nTo: %s\nSubject: %s\n\n%s' % (self.__smtp_login, dest_email, subject, email_text)
-                print(msg.as_string())
-                # self.__server_email.set_debuglevel(1) # Необязательно; так будут отображаться данные с сервера в консоли
-                print(dest_email, gen_token)
-                self.__server_email.sendmail(self.__smtp_login, dest_email, msg.as_string())
-            except Exception as e:
-                ok = False
-                reg = False
-                error_msg = "Something went wrong"
-                print(e)
-                print("Can not send message to Email: {:s}".format(dest_email))
-            if reg:
-                self.__user_db.insert_one({'_id': user_id, 'name': user_data['name'], 'email': user_data['email'], 'token': gen_token})
-        return ok, error_msg
+        users = list(self.__user_db.find({"_id": user_data['_id']}))
+        if len(users) == 1:
+            user_info = copy.deepcopy(users[0])
+            if user_info['email'] != user_data['email']:
+                return False, "Given wrong registration email"
+            elif user_info['password'] != user_data['password']:
+                return False, "Given wrong registration password"
+            return True, 'Authentification complete'
+        self.__user_db.insert_one(user_data)
+        return True, 'Registration complete'
 
     def auth(self, user_data: dict) -> Tuple[bool, str]:
-        try:
-            validate(instance=user_data, schema=LOGIN_SCHEME)
-            
-            users = list(self.__user_db.find({"_id": user_data['id']}))
-            print(user_data)
-            if len(users) != 1:
-                logging.error('Logging error. User with id {:s} not found'.format(user_data['_id']))
-                return False, 'Unknown login. Please reset chdu connection and register'
-            if users[0]['token'] != user_data['token']:
-                logging.error('Logging error. Invalid token')
-                return False, 'Invalid token'
-            return True, ''
-        except ValidationError:
-            return False, 'Invalid user data'
+        if not self.__prepare_user_data(user_data):
+            return False, "Given invalid information for authentification"
+
+        users = list(self.__user_db.find({"_id": user_data['id']}))
+        if len(users) != 1:
+            logging.error('Logging error. User with id {:s} not found'.format(user_data['id']))
+            return False, 'Unknown user. Please reset chdu connection and register'
+        if users[0]['password'] != user_data['password']:
+            logging.error('Logging error. Invalid password')
+            return False, 'Invalid password'
+        return True, 'Authentification complete'
     
     def set_case_number(self, user_id: int, task_number: int, case_number: int) -> bool:
         out = self.__user_case_assoc.find_one_and_update({"_id": user_id}, {"$set":{"task"+str(task_number): case_number} })
@@ -184,6 +122,19 @@ class AuthHandler:
         if not 'task' + str(task_number) in out:
             return None
         return out['task' + str(task_number)]
+    
+    def __prepare_user_data(self, user_data: dict) -> bool:
+        try:
+            validate(instance=user_data, schema=REGISTER_SCHEME)
+        except ValidationError:
+            return False, "Invalid user data"
+        try:
+            user_data['_id'] = int(user_data.pop('id'))
+        except ValueError:
+            return False
+
+        return True
+
 
     @property
     def host(self) -> str:
