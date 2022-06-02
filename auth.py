@@ -70,7 +70,8 @@ class AuthHandler:
     def register(self, user_data: dict) -> Tuple[int, str]:
         if not self.__prepare_user_data(user_data):
             return False, "Given invalid information for registration"
-        users = list(self.__user_db.find({"_id": user_data['_id']}))
+        db_client = MongoClient('mongodb://{:s}:{:s}'.format(self.__db_server, str(self.__db_port)))
+        users = list(db_client['local-hdu']['InfoStudent'].find({"_id": user_data['_id']}))
         if len(users) == 1:
             user_info = copy.deepcopy(users[0])
             if user_info['email'] != user_data['email']:
@@ -78,13 +79,14 @@ class AuthHandler:
             elif user_info['password'] != user_data['password']:
                 return 403, "Given wrong registration password"
             return 200, 'Authentification complete'
-        self.__user_db.insert_one(user_data)
+        db_client['local-hdu']['InfoStudent'].insert_one(user_data)
         return 200, 'Registration complete'
 
     def auth(self, user_data: dict) -> Tuple[int, str]:
         if not self.__prepare_user_data(user_data):
             return 401, "Given invalid information for authentification"
-        users = list(self.__user_db.find({"_id": user_data['_id']}))
+        db_client = MongoClient('mongodb://{:s}:{:s}'.format(self.__db_server, str(self.__db_port)))
+        users = list(db_client['local-hdu']['InfoStudent'].find({"_id": user_data['_id']}))
         if len(users) != 1:
             logging.error('Logging error. User with id {:s} not found'.format(user_data['id']))
             return 404, 'Unknown user. Please reset chdu connection and register'
@@ -94,27 +96,32 @@ class AuthHandler:
         return 200, 'Authentification complete'
     
     def set_case_number(self, user_id: int, task_number: int, case_number: int) -> bool:
-        out = self.__user_case_assoc.find_one_and_update({"_id": user_id}, {"$set":{"task"+str(task_number): case_number} })
+        db_client = MongoClient('mongodb://{:s}:{:s}'.format(self.__db_server, str(self.__db_port)))
+        out = db_client['local-hdu']['StudentsCases'].find_one_and_update({"_id": user_id}, {"$set":{"task"+str(task_number): case_number} })
         if out is None:
-            self.__user_case_assoc.insert_one({"_id": user_id, "task"+str(task_number): case_number})
+            db_client['local-hdu']['StudentsCases'].insert_one({"_id": user_id, "task"+str(task_number): case_number})
         return True
     
     def get_best_score(self,user_id: int, task_number: int):
-        max_score_attemp = self.__task_db.find({"id_student": user_id, "task_out.number": task_number}).sort("score.total_score", -1).limit(1)
+        db_client = MongoClient('mongodb://{:s}:{:s}'.format(self.__db_server, str(self.__db_port)))
+        max_score_attemp = db_client['local-hdu']['StudentsAttempts'].find({"id_student": user_id, "task_out.number": task_number}).sort("score.total_score", -1).limit(1)
         out_d = list(max_score_attemp)
         return out_d[0]["score"]
 
     def get_count_attemps(self,user_id: int, task_number: int):
-        attemps = list(self.__task_db.find({"id_student": user_id, "task_out.number": task_number}))
+        db_client = MongoClient('mongodb://{:s}:{:s}'.format(self.__db_server, str(self.__db_port)))
+        attemps = list(db_client['local-hdu']['StudentsAttempts'].find({"id_student": user_id, "task_out.number": task_number}))
         # print(attemps)
         return len(attemps)
     
     def set_task(self, user_id: int, task_in: dict, task_out: dict, score: dict) -> bool:
-        self.__task_db.insert_one({"id_student": user_id,"task_in": task_in, "task_out": task_out, "score": score})
+        db_client = MongoClient('mongodb://{:s}:{:s}'.format(self.__db_server, str(self.__db_port)))
+        db_client['local-hdu']['StudentsAttempts'].insert_one({"id_student": user_id,"task_in": task_in, "task_out": task_out, "score": score})
         return True
     
     def get_case_number(self, user_id: int, task_number: int) -> int:
-        out = self.__user_case_assoc.find_one({"_id": user_id})
+        db_client = MongoClient('mongodb://{:s}:{:s}'.format(self.__db_server, str(self.__db_port)))
+        out = db_client['local-hdu']['StudentsCases'].find_one({"_id": user_id})
         if out is None:
             return None
         if not 'task' + str(task_number) in out:
