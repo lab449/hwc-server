@@ -28,8 +28,7 @@ def register():
     if 'application/json' in content_type:
         user_data = request.json['auth']
         code, msg = auth.register(user_data)
-        print((code==200))
-        return jsonify(isError=(code==200), message=msg, statusCode=code, data=msg)
+        return jsonify(isError=(code!=200), message=msg, statusCode=code, data=msg)
     return jsonify(isError= True,  message='Comething went wrong', statusCode=400)
 
 @app.route('/login', methods=['POST'])
@@ -38,7 +37,7 @@ def login():
     if 'application/json' in content_type:
         user_data = request.json['auth']
         code, msg = auth.auth(user_data)
-        return jsonify(isError=(code==200), message=msg, statusCode=code, data=msg)
+        return jsonify(isError=(code!=200), message=msg, statusCode=code, data=msg)
     return jsonify(isError=True, statusCode=400, message="Something went wrong")
 
 @app.route('/gettask', methods=['POST'])
