@@ -70,7 +70,11 @@ class AuthHandler:
     def register(self, user_data: dict) -> Tuple[int, str]:
         if not self.__prepare_user_data(user_data):
             return False, "Given invalid information for registration"
-        users = list(self.__user_db.find({"_id": user_data['_id']}))
+        try:
+            users = list(self.__user_db.find({"_id": user_data['_id']}))
+        except Exception as e:
+            logging.error('Invalid user_data')
+            return 400, 'Invalid user id'
         if len(users) == 1:
             user_info = copy.deepcopy(users[0])
             if user_info['email'] != user_data['email']:
@@ -78,13 +82,21 @@ class AuthHandler:
             elif user_info['password'] != user_data['password']:
                 return 403, "Given wrong registration password"
             return 200, 'Authentification complete'
-        self.__user_db.insert_one(user_data)
+        try:
+            self.__user_db.insert_one(user_data)
+        except Exception as e:
+            logging.error('Wrong registration data. Password must be at least 6 characters')
+            return 400, 'Invalid user id'
         return 200, 'Registration complete'
 
     def auth(self, user_data: dict) -> Tuple[int, str]:
         if not self.__prepare_user_data(user_data):
             return 401, "Given invalid information for authentification"
-        users = list(self.__user_db.find({"_id": user_data['_id']}))
+        try:
+            users = list(self.__user_db.find({"_id": user_data['_id']}))
+        except Exception as e:
+            logging.error('Invalid user_data')
+            return 400, 'Invalid user id'
         if len(users) != 1:
             logging.error('Logging error. User with id {:s} not found'.format(user_data['id']))
             return 404, 'Unknown user. Please reset chdu connection and register'
