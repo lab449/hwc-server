@@ -98,7 +98,7 @@ class AuthHandler:
             logging.error('Invalid user_data')
             return 400, 'Invalid user id'
         if len(users) != 1:
-            logging.error('Logging error. User with id {:s} not found'.format(user_data['id']))
+            logging.error('Logging error. User with id %s not found', str(user_data['_id']))
             return 404, 'Unknown user. Please reset chdu connection and register'
         if users[0]['password'] != user_data['password']:
             logging.error('Logging error. Invalid password')
