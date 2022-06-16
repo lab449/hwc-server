@@ -63,6 +63,17 @@ class NumberAnswer(Answer):
         score = self._ans_config['score'] if np.abs((self._ans_value - value)) <= self._ans_config['valid_range'] else 0.0
         return score
 
+class IntegerAnswer(Answer):
+    def __init__(self, ans_config: dict):
+        super().__init__(ans_config)
+        self._ans_value = int(self._ans_config['true_value'])
+
+    def check(self, value) -> int:
+        if not isinstance(value, int):
+            return None
+        score = self._ans_config['score'] if value==self._ans_value else 0.0
+        return score
+
 class ArrayAnswer(Answer):
     def __init__(self, ans_config: dict):
         super().__init__(ans_config)
@@ -82,6 +93,7 @@ class AnswerCreator:
         'list': ArrayAnswer,
         'float': NumberAnswer,
         'double': NumberAnswer,
+        'int': IntegerAnswer
     }
     def create_answer(answer_config: dict) -> Answer:
         return AnswerCreator.factory[answer_config['inst']](answer_config)
