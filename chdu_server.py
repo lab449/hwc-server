@@ -31,7 +31,7 @@ ATTEMPS_LIMIT = 40
 MATLAB_CLIENT_VERSION, MATLAB_LAUNCHER_VERSION = start()
 
 auth = AuthHandler('auth_manager_config.json')
-task_list = (task.Task('server_task_data/lab1_tasks.json'), task.Task('server_task_data/empty_task.json'), task.Task('server_task_data/lab3_tasks.json'), task.Task('server_task_data/lab4_tasks.json'), task.Task('server_task_data/lab5_tasks.json'), task.Task('server_task_data/lab6_tasks.json'))
+task_list = (task.Task('server_task_data/lab1_tasks.json'), task.Task('server_task_data/lab2_tasks.json'), task.Task('server_task_data/lab3_tasks.json'), task.Task('server_task_data/lab4_tasks.json'), task.Task('server_task_data/lab5_tasks.json'), task.Task('server_task_data/lab6_tasks.json'))
 
 app = Flask(__name__)
 limiter = Limiter(
