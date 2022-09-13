@@ -7,7 +7,6 @@ import hashlib, pathlib
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-
 from auth import AuthHandler
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -19,21 +18,27 @@ def get_file_version(filename: str) -> dict:
         f.close()
         return {'md5': hashlib.md5(client_bytes).hexdigest()}
 
-
 def start():
-    os.system('cd ../hwc-matlab-client && git pull && hmd2html -s README.md -d ../html')
-    os.system('mv ../html/README.html /var/www/hdu/html/index.html')
-    os.system('rm -rv ../html')
     return get_file_version('../hwc-matlab-client/CHDU.m'), get_file_version('../hwc-matlab-client/chdu_connect.m')
-
 
 ATTEMPS_LIMIT = 40
 MATLAB_CLIENT_VERSION, MATLAB_LAUNCHER_VERSION = start()
 
-auth = AuthHandler('auth_manager_config.json')
-task_list = (task.Task('server_task_data/lab1_tasks.json'), task.Task('server_task_data/lab2_tasks.json'), task.Task('server_task_data/lab3_tasks.json'), task.Task('server_task_data/lab4_tasks.json'), task.Task('server_task_data/lab5_tasks.json'), task.Task('server_task_data/lab6_tasks.json'))
+task_list = (
+    task.Task('server_task_data/lab1_tasks.json'), task.Task('server_task_data/lab2_tasks.json'),
+    task.Task('server_task_data/lab3_tasks.json'), task.Task('server_task_data/lab4_tasks.json'),
+    task.Task('server_task_data/lab5_tasks.json'), task.Task('server_task_data/lab6_tasks.json')
+)
 
+mongodb_config = {
+    'host': os.environ['MONGODB_HOSTNAME'],
+    'port': os.environ['MONGODB_PORT'],
+    'db': os.environ['MONGODB_DATABASE']
+}
+
+auth = AuthHandler(mongodb_config)
 app = Flask(__name__)
+
 limiter = Limiter(
     app,
     key_func=get_remote_address,
@@ -118,6 +123,10 @@ def set_task():
         
     return jsonify(isError= True, message= 'Something went wrong', statusCode=400)
 
+@app.route('/files/<path:filename>', methods=['GET', 'POST'])
+def download(filename):
+    uploads = os.path.join('server_task_data', 'files')
+    return send_from_directory(directory=uploads, path=filename)
 
 @app.route('/api/matlab_client_version', methods=['GET'])
 def client_version():
@@ -126,10 +135,4 @@ def client_version():
 @app.route('/api/matlab_launcher_version', methods=['GET'])
 def launcher_version():
     return jsonify(isError= False, message= 'Succes', statusCode=200, data=MATLAB_LAUNCHER_VERSION)
-
-if __name__ == '__main__':
-    # context = ('hdu2--cacert503.pem', 'localhost.pem')#certificate and key files
-    # app.run(debug=True, ssl_context=context, host='127.0.0.1', port=port)
-    app.run(debug=True, host=auth.host, port=auth.port)
-
     

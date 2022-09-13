@@ -53,19 +53,14 @@ REGISTER_SCHEME = {
 }
 
 class AuthHandler:
-    def __init__(self, auth_manager_config: str):
-        with open(auth_manager_config, 'r') as conf:
-            config_dict = json.load(conf)
-            self.__db_server = config_dict['db_connect']['host']
-            self.__db_port = config_dict['db_connect']['port']
-        
-        self.__host = config_dict['host']
-        self.__port = config_dict['port']
-
-        self.db_client = MongoClient('mongodb://{:s}:{:s}'.format(self.__db_server, str(self.__db_port)))
-        self.__user_db = self.db_client['local-hdu']['InfoStudent']
-        self.__user_case_assoc = self.db_client['local-hdu']['StudentsCases']
-        self.__task_db = self.db_client['local-hdu']['StudentsAttempts']
+    def __init__(self, db_config: str):
+        self.db_client = MongoClient('mongodb://{:s}:{:s}'.format(
+            db_config['host'],
+            db_config['port']
+        ))
+        self.__user_db = self.db_client[db_config['db']]['InfoStudent']
+        self.__user_case_assoc = self.db_client[db_config['db']]['StudentsCases']
+        self.__task_db = self.db_client[db_config['db']]['StudentsAttempts']
         
     def register(self, user_data: dict) -> Tuple[int, str]:
         if not self.__prepare_user_data(user_data):
@@ -73,7 +68,7 @@ class AuthHandler:
         try:
             users = list(self.__user_db.find({"_id": user_data['_id']}))
         except Exception as e:
-            logging.error('Invalid user_data')
+            logging.exception('Invalid user_data')
             return 400, 'Invalid user id'
         if len(users) == 1:
             user_info = copy.deepcopy(users[0])
@@ -85,7 +80,7 @@ class AuthHandler:
         try:
             self.__user_db.insert_one(user_data)
         except Exception as e:
-            logging.error('Wrong registration data. Password must be at least 6 characters')
+            logging.exception('Wrong registration data. Password must be at least 6 characters')
             return 400, 'Invalid user id'
         return 200, 'Registration complete'
 
@@ -95,7 +90,7 @@ class AuthHandler:
         try:
             users = list(self.__user_db.find({"_id": user_data['_id']}))
         except Exception as e:
-            logging.error('Invalid user_data')
+            logging.exception('Invalid user_data')
             return 400, 'Invalid user id'
         if len(users) != 1:
             logging.error('Logging error. User with id %s not found', str(user_data['_id']))
