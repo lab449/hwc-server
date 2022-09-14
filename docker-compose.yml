@@ -1,7 +1,7 @@
 version: '3.3'
 services:
   hwc:
-    container_name: hwc
+    # container_name: hwc
     build: .
     restart: always
     command: uwsgi chdu_server.ini
@@ -16,12 +16,10 @@ services:
       - ${APP_EXTERNAL_PORT}:5050
     volumes:
       - hwc-volume:/data/hwc
-    depends_on:
-      - mongodb-seed
 
   mongodb:
     image: mongo
-    container_name: mongodb
+    # container_name: mongodb
     restart: always
     environment:
       MONGODB_DATA_DIR: /data/db
@@ -37,7 +35,6 @@ services:
     build: ./mongo-seed
     depends_on:
       - mongodb
-    container_name: mongodb-seed
     depends_on:
       - mongodb
     volumes:
