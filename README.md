@@ -1,4 +1,8 @@
 # hwc-server
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/26273766/190159953-ad5e1969-7da5-43bf-8437-16cec4d9d7c9.svg" width="400"/>
+</p>
+
 The Homework Checker Server is the back end of an automatic homework checker application with various types of output.
 
 ## Setup hwc-server
