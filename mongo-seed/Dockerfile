@@ -1,4 +1,4 @@
-FROM mongo:latest
+FROM mongo:4.4.6
 LABEL maintainer="texnoman@itmo.ru"
 
 COPY . .
