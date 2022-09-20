@@ -13,7 +13,7 @@ from auth import AuthHandler
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from task import task, task_manager
 
-task_manager = task_manager.TaskManager('server_task_data/identification2021_tasks.json')
+task_manager = task_manager.TaskManager('server_task_data/tasks_info.json')
 mongodb_config = {
     'host': os.environ['MONGODB_HOSTNAME'],
     'port': os.environ['MONGODB_PORT'],
