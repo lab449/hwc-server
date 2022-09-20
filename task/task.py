@@ -148,4 +148,5 @@ class Task:
         return case_number
     
     def get_case(self, case_number: int) -> Case:
+        assert (case_number>0 and case_number< self.__count_cases), 'Invalid casenumber'
         return Case(self.__task_config['cases'][case_number])
