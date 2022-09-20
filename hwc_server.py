@@ -129,9 +129,11 @@ def set_task():
     return jsonify(isError= True, message= 'Something went wrong', statusCode=400)
 
 @app.route('/files/<path:filename>', methods=['GET', 'POST'])
+@app.route('/clients/<path:filename>', methods=['GET', 'POST'])
 def download(filename):
-    uploads = os.path.join('server_task_data', 'files')
+    uploads = os.path.join('server_task_data', 'clients')
     return send_from_directory(directory=uploads, path=filename)
+
 
 @app.route('/api/matlab/client_version', methods=['GET'])
 def client_version():
