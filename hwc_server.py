@@ -135,7 +135,8 @@ def download(filename):
 
 @app.route('/clients/<path:filename>', methods=['GET', 'POST'])
 def get_client(filename):
-    uploads = os.path.join('server_task_data', 'clients')
+    uploads = os.path.join('clients')
+    print(filename)
     return send_from_directory(directory=uploads, path=filename)
 
 @app.route('/api/matlab/client_version', methods=['GET'])

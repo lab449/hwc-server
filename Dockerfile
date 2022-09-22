@@ -22,7 +22,7 @@ WORKDIR /home/hwc/apps/hwc-server
 COPY . .
 RUN pip3 install -r requirements.txt
 
-CMD ["git -C /home/hwc/apps/hwc-server/clients/hwc-matlab-client pull origin"]
+CMD ["/bin/bash", "-c", "git -C /home/hwc/apps/hwc-server/clients/hwc-matlab-client pull origin; uwsgi /home/hwc/apps/hwc-server/hwc_server.ini"]
 
 # # Expose ports
 EXPOSE 5050

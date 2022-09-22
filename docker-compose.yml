@@ -4,7 +4,6 @@ services:
     # container_name: hwc
     build: .
     restart: always
-    command: uwsgi hwc_server.ini
     environment:
       APP_DEBUG: "False"
       MONGODB_DATABASE: ${DB}
