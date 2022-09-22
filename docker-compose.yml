@@ -4,7 +4,6 @@ services:
     # container_name: hwc
     build: .
     restart: always
-    command: uwsgi chdu_server.ini
     environment:
       APP_DEBUG: "False"
       MONGODB_DATABASE: ${DB}
@@ -33,8 +32,6 @@ services:
 
   mongodb-seed:
     build: ./mongo-seed
-    depends_on:
-      - mongodb
     depends_on:
       - mongodb
     volumes:

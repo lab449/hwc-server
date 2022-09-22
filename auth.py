@@ -68,7 +68,7 @@ class AuthHandler:
         try:
             users = list(self.__user_db.find({"_id": user_data['_id']}))
         except Exception as e:
-            logging.exception('Invalid user_data')
+            logging.exception('Invalid user id')
             return 400, 'Invalid user id'
         if len(users) == 1:
             user_info = copy.deepcopy(users[0])
@@ -81,7 +81,7 @@ class AuthHandler:
             self.__user_db.insert_one(user_data)
         except Exception as e:
             logging.exception('Wrong registration data. Password must be at least 6 characters')
-            return 400, 'Invalid user id'
+            return 400, 'Wrong registration data. Please check Email. Password must be at least 6 characters'
         return 200, 'Registration complete'
 
     def auth(self, user_data: dict) -> Tuple[int, str]:
@@ -90,13 +90,13 @@ class AuthHandler:
         try:
             users = list(self.__user_db.find({"_id": user_data['_id']}))
         except Exception as e:
-            logging.exception('Invalid user_data')
+            logging.exception('Invalid user id')
             return 400, 'Invalid user id'
         if len(users) != 1:
-            logging.error('Logging error. User with id %s not found', str(user_data['_id']))
+            logging.error('User with id %s not found', str(user_data['_id']))
             return 404, 'Unknown user. Please reset chdu connection and register'
         if users[0]['password'] != user_data['password']:
-            logging.error('Logging error. Invalid password')
+            logging.error('Invalid password')
             return 403, 'Invalid password'
         return 200, 'Authentification complete'
     

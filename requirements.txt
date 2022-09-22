@@ -4,3 +4,4 @@ flask_limiter
 pymongo
 jsonschema
 uwsgi
+pypandoc
