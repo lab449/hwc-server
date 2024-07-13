@@ -22,9 +22,9 @@ class AuthHandler:
             self.__db_port = config_dict['db_connect']['port']
 
         self.db_client = MongoClient('mongodb://{:s}:{:s}'.format(self.__db_server, str(self.__db_port)))
-        self.__user_db = self.db_client['local-hdu']['InfoStudent']
-        self.__user_case_assoc = self.db_client['local-hdu']['StudentsCases']
-        self.__task_db = self.db_client['local-hdu']['StudentsAttempts']
+        self.__user_db = self.db_client['hwc-db']['InfoStudent']
+        self.__user_case_assoc = self.db_client['hwc-db']['StudentsCases']
+        self.__task_db = self.db_client['hwc-db']['StudentsAttempts']
     
     def get_attems(self, user_id: int, task_number: int) -> int:
         out = self.__user_case_assoc.find_one({"_id": user_id})

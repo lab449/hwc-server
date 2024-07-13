@@ -21,7 +21,9 @@ LOGIN_SCHEME = {
             "type": "string"
         },
         "id": {
-            "type": "number"
+            "type": "number",
+            "minimum": 19322000,
+            "maximum": 21322500
         },
         "name": {
             "type": "string"
@@ -40,7 +42,9 @@ REGISTER_SCHEME = {
     "type": "object",
     "properties": {
         "id": {
-            "type": "number"
+            "type": "number",
+            "minimum": 19322000,
+            "maximum": 21322500
         },
         "name": {
             "type": "string"
