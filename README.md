@@ -16,6 +16,10 @@ Before building and starting homework checking server please configure external 
 ```bash 
     docker-compose --env-file <ENV_FILENAME> -p <PROJECT_NAME> up -d
 ```
+
+3. Install nginx with `nginx.conf`
+4. Copy images in: `/var/www/<URL>/images/`
+
 ## Dumping database from server
 ```bash
     docker-compose exec -T mongodb sh -c 'mongodump --db hwc-db --out <DIRECTORY_IN_CONTAINER>'

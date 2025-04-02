@@ -5,9 +5,6 @@ import logging
 import os,sys
 import hashlib, pathlib
 
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-
 from auth import AuthHandler
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,11 +19,6 @@ mongodb_config = {
 auth = AuthHandler(mongodb_config)
 app = Flask(__name__)
 
-limiter = Limiter(
-    app,
-    key_func=get_remote_address,
-    default_limits=["400 per day", "100 per hour", "1 per second"]
-)
 
 def get_file_version(filename: str) -> dict:
     with open(filename,'rb') as f:
@@ -94,7 +86,6 @@ def get_task():
     return jsonify(isError= True, message= 'Something went wrong', statusCode=400)
 
 @app.route('/api/send_task', methods=['POST'])
-@limiter.limit("80/day")
 def set_task():
     content_type = request.headers.get('Content-Type')
     if 'application/json' in content_type:

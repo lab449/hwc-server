@@ -19,8 +19,12 @@ WORKDIR /home/hwc/apps/hwc-server/clients
 RUN git clone https://github.com/ITMORobotics/hwc-matlab-client.git
 
 WORKDIR /home/hwc/apps/hwc-server
-COPY . .
+COPY ./requirements.txt ./requirements.txt
 RUN pip3 install -r requirements.txt
+
+COPY ./ ./
+
+RUN git config pull.rebase false
 
 CMD ["/bin/bash", "-c", "git -C /home/hwc/apps/hwc-server/clients/hwc-matlab-client pull origin; uwsgi /home/hwc/apps/hwc-server/hwc_server.ini"]
 

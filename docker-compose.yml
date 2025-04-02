@@ -2,6 +2,7 @@ version: '3.3'
 services:
   hwc:
     # container_name: hwc
+    image: hwc-server-hwc
     build: .
     restart: always
     environment:
@@ -12,7 +13,7 @@ services:
     networks:
       - net
     ports:
-      - ${APP_EXTERNAL_PORT}:5050
+      - 127.0.0.1:${APP_EXTERNAL_PORT}:5050
     volumes:
       - hwc-volume:/data/hwc
 
@@ -28,7 +29,7 @@ services:
     networks:
       - net
     ports:
-      - ${DB_EXTERNAL_PORT}:27017
+      - 127.0.0.1:${DB_EXTERNAL_PORT}:27017
 
   mongodb-seed:
     build: ./mongo-seed
@@ -38,6 +39,7 @@ services:
       - hwc-volume:/data/db
     networks:
       - net
+  
 
 volumes:
   hwc-volume:
