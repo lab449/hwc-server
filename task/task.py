@@ -1,6 +1,6 @@
 from __future__ import annotations
 import copy
-from math import ceil
+from math import ceil, isfinite
 from typing import Tuple
 import os, sys
 import json
@@ -58,7 +58,12 @@ class NumberAnswer(Answer):
         self._ans_value = float(self._ans_config['true_value'])
     
     def check(self, value) -> int:
-        if not isinstance(value, (int, float)):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        try:
+            if not isfinite(value):
+                return None
+        except OverflowError:
             return None
         score = self._ans_config['score'] if np.abs((self._ans_value - value)) <= self._ans_config['valid_range'] else 0.0
         return score
@@ -69,7 +74,7 @@ class IntegerAnswer(Answer):
         self._ans_value = int(self._ans_config['true_value'])
 
     def check(self, value) -> int:
-        if not isinstance(value, int):
+        if isinstance(value, bool) or not isinstance(value, int):
             return None
         score = self._ans_config['score'] if value==self._ans_value else 0.0
         return score
@@ -82,7 +87,12 @@ class ArrayAnswer(Answer):
     def check(self, value) -> int:
         if not isinstance(value, list):
             return None
-        value = np.array(value)
+        try:
+            value = np.asarray(value)
+            if value.dtype.kind not in 'iuf' or not np.isfinite(value).all():
+                return None
+        except (ValueError, TypeError, OverflowError):
+            return None
         if value.shape != self._ans_value.shape:
             return None
         score = self._ans_config['score'] if np.allclose(value, self._ans_value, rtol=0, atol=self._ans_config['valid_range']) else 0.0
@@ -144,9 +154,10 @@ class Task:
         self.__count_cases = len(self.__task_config['cases'])
     
     def generate_case_number(self) -> int:
-        case_number = int(np.random.uniform(0, self.__count_cases))
+        case_number = int(np.random.randint(self.__count_cases))
         return case_number
     
     def get_case(self, case_number: int) -> Case:
-        assert (case_number>0 and case_number< self.__count_cases), 'Invalid casenumber'
+        if isinstance(case_number, bool) or not isinstance(case_number, int) or not 0 <= case_number < self.__count_cases:
+            raise ValueError('Invalid case number')
         return Case(self.__task_config['cases'][case_number])
