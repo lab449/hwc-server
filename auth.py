@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 import hmac
 from datetime import datetime
 from pymongo import MongoClient, ReturnDocument
@@ -29,12 +29,17 @@ class AuthHandler:
         self.__user_db = db['InfoStudent']
         self.__user_case_assoc = db['StudentsCases']
         self.__task_db = db['StudentsAttempts']
+        self.__slot_key = [('id_student', 1), ('task_out.number', 1), ('attempt_slot', 1)]
+        self.__task_db.create_index(self.__slot_key, name='student_lab_attempt_slot', unique=True,
+                                    partialFilterExpression={'attempt_slot': {'$exists': True}})
 
     @staticmethod
     def __valid_user_data(user_data) -> bool:
         try:
             validate(instance=user_data, schema=LOGIN_SCHEME)
-        except ValidationError:
+            for field in ('name', 'email', 'password'):
+                user_data[field].encode('utf-8')
+        except (ValidationError, UnicodeError):
             return False
         return True
 
@@ -96,7 +101,9 @@ class AuthHandler:
     @staticmethod
     def __attempt_query(user_id: int, task_number: int):
         # Also count historic submissions that stored a JSON string as the number.
-        return {'id_student': user_id, 'task_out.number': {'$in': [task_number, str(task_number)]}}
+        return {'id_student': user_id, '$or': [
+            {'task_out.number': task_number},
+            {'task_out.number': {'$regex': r'^\s*\+?0*' + str(task_number) + r'\s*$'}}]}
 
     def get_best_score(self, user_id: int, task_number: int):
         row = self.__task_db.find_one(self.__attempt_query(user_id, task_number), sort=[('score.total_score', -1)])
@@ -105,10 +112,29 @@ class AuthHandler:
     def get_count_attemps(self, user_id: int, task_number: int):
         return self.__task_db.count_documents(self.__attempt_query(user_id, task_number))
 
-    def set_task(self, user_id: int, task_in: dict, task_out: dict, score: dict, submitted_at: datetime) -> bool:
-        self.__task_db.insert_one({'id_student': user_id, 'task_in': task_in, 'task_out': task_out,
-                                   'score': score, 'submitted_at': submitted_at})
-        return True
+    def set_task(self, user_id: int, task_in: dict, task_out: dict, score: dict,
+                 submitted_at: datetime, attempt_limit: int) -> Optional[int]:
+        query = self.__attempt_query(user_id, task_out['number'])
+        # Legacy rows are kept unchanged and reduce the number of available slots.
+        legacy = self.__task_db.count_documents(dict(query, attempt_slot={'$exists': False}))
+        capacity = max(0, attempt_limit - legacy)
+        occupied = {row['attempt_slot'] for row in self.__task_db.find(
+            dict(query, attempt_slot={'$exists': True}), {'attempt_slot': 1, '_id': 0})}
+        for slot in range(capacity):
+            if slot in occupied:
+                continue
+            record = {'id_student': user_id, 'task_in': task_in, 'task_out': task_out,
+                      'score': score, 'submitted_at': submitted_at, 'attempt_slot': slot}
+            try:
+                # The unique index admits one request per slot; no separate counter
+                # reservation can be stranded if encoding or insertion fails.
+                self.__task_db.insert_one(record)
+            except DuplicateKeyError as exc:
+                if (exc.details or {}).get('keyPattern') != dict(self.__slot_key):
+                    raise
+                continue
+            return max(0, attempt_limit - self.get_count_attemps(user_id, task_out['number']))
+        return None
 
     def get_case_number(self, user_id: int, task_number: int):
         row = self.__user_case_assoc.find_one({'_id': user_id})

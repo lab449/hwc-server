@@ -26,7 +26,7 @@ class TaskRegressions(unittest.TestCase):
             with self.subTest(n=n),self.assertRaises((ValueError,IndexError,TypeError)):self.task.get_case(n)
     def test_malformed_numeric_answers(self):
         array=ArrayAnswer({'inst':'list','score':1,'valid_range':.01,'true_value':[1,2]})
-        for v in [['1','2'],[None,2],[[1],[2,3]],[float('inf'),2]]:
+        for v in [['1','2'],[None,2],[[1],[2,3]],[float('inf'),2],[True,2],[1,False]]:
             with self.subTest(v=v):self.assertIsNone(array.check(v))
         for klass,kind in [(NumberAnswer,'float'),(IntegerAnswer,'int')]:
             answer=klass({'inst':kind,'score':1,'valid_range':.01,'true_value':1})

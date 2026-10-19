@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import signal
 import subprocess
 import sys
 import tempfile
@@ -29,8 +30,19 @@ class ApiE2E(unittest.TestCase):
             s.bind(('127.0.0.1', 0))
             cls.port = s.getsockname()[1]
         env = dict(os.environ, MONGODB_DATABASE=cls.db_name, FLASK_DEBUG='0')
-        cls.server = subprocess.Popen([sys.executable, '-m', 'flask', '--app', 'hwc_server', 'run', '--host', '127.0.0.1', '--port', str(cls.port), '--no-debugger'], env=env, stdout=cls.log, stderr=cls.log)
+        cls.ini = None
+        if os.environ.get('HWC_E2E_SERVER') == 'uwsgi':
+            cls.ini = tempfile.NamedTemporaryFile(mode='w', suffix='.ini')
+            cls.ini.write(Path('hwc_server.ini').read_text().replace(
+                'http-socket = 0.0.0.0:5050', 'http-socket = 127.0.0.1:' + str(cls.port)))
+            cls.ini.flush()
+            command = ['uwsgi', '--ini', cls.ini.name]
+        else:
+            command = [sys.executable, '-m', 'flask', '--app', 'hwc_server', 'run', '--host',
+                       '127.0.0.1', '--port', str(cls.port), '--no-debugger']
+        cls.server = None
         try:
+            cls.server = subprocess.Popen(command, env=env, stdout=cls.log, stderr=cls.log, start_new_session=True)
             for _ in range(100):
                 try:
                     if cls.request('GET', '/api/ok')[1]['statusCode'] == 200:
@@ -47,22 +59,35 @@ class ApiE2E(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.server.terminate()
         try:
-            cls.server.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            cls.server.kill()
-            cls.server.wait()
-        assert cls.db_name.startswith('hwc_e2e_')
-        cls.mongo.drop_database(cls.db_name)
-        cls.mongo.close()
-        cls.log.close()
+            if cls.server is not None:
+                try:
+                    os.killpg(cls.server.pid, signal.SIGINT)
+                except ProcessLookupError:
+                    pass
+                try:
+                    cls.server.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(cls.server.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    cls.server.wait()
+        finally:
+            try:
+                assert cls.db_name.startswith('hwc_e2e_')
+                cls.mongo.drop_database(cls.db_name)
+            finally:
+                cls.mongo.close()
+                cls.log.close()
+                if cls.ini is not None:
+                    cls.ini.close()
 
     @classmethod
     def request(cls, method, path, data=None, raw=None, content_type='application/json'):
         body = json.dumps(data).encode() if raw is None and data is not None else raw
         headers = {'Content-Type': content_type} if content_type else {}
-        conn = http.client.HTTPConnection('127.0.0.1', cls.port, timeout=10)
+        conn = http.client.HTTPConnection('127.0.0.1', cls.port, timeout=30)
         try:
             conn.request(method, path, body=body, headers=headers)
             r = conn.getresponse()
@@ -138,6 +163,61 @@ class ApiE2E(unittest.TestCase):
             _, obj, _ = self.request('POST', endpoint, body)
             self.assertEqual((obj['isError'], obj['statusCode']), (True, 409))
         self.assertEqual(self.db.StudentsCases.find_one({'_id': self.user['id']})['task1'], -1)
+
+    def test_invalid_unicode_credentials_are_json_errors(self):
+        legacy = dict(self.user, id=self.user['id'] + 500000)
+        stored = dict(legacy)
+        stored['_id'] = stored.pop('id')
+        self.db.InfoStudent.insert_one(stored)
+        for user in [self.user, legacy]:
+            for field in ['password', 'name', 'email']:
+                for endpoint in ['/api/register', '/api/login', '/api/gettask', '/api/send_task']:
+                    status, obj, _ = self.request('POST', endpoint, {
+                        'auth': dict(user, **{field: '\ud800'}), 'number': 1,
+                        'task': {'number': 1, 'answers': {}}})
+                    self.assertEqual(status, 200)
+                    self.assertIsInstance(obj, dict)
+                    self.assertEqual((obj['statusCode'], obj['isError']), (400, True))
+        unicode_user = dict(self.user, id=self.user['id'] + 600000,
+                            name='学生测试', password='пароль-密码-100%')
+        self.good('/api/register', {'auth': unicode_user})
+        self.good('/api/login', {'auth': unicode_user})
+
+    def test_concurrent_last_attempt_and_legacy_numbers(self):
+        self.assign(4, 0)
+        numbers = [4, '4', '04', '+4', ' 4 ']
+        self.db.StudentsAttempts.insert_many([
+            {'id_student': self.user['id'], 'task_out': {'number': numbers[i % len(numbers)]},
+             'score': {'total_score': 0}} for i in range(39)])
+        case = self.tasks[3]['cases'][0]
+        answers = {k: v['true_value'] for k, v in case['answers'].items()}
+        def submit(_):
+            return self.good('/api/send_task', {'auth': self.user, 'task': {'number': 4, 'answers': answers}})
+        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
+            results = list(pool.map(submit, range(24)))
+        self.assertEqual(self.db.StudentsAttempts.count_documents({'id_student': self.user['id']}), 40)
+        self.assertEqual(self.db.StudentsAttempts.count_documents(
+            {'id_student': self.user['id'], 'attempt_slot': {'$exists': True}}), 1)
+        self.assertTrue(all(x['data']['total_score'] == sum(v['score'] for v in case['answers'].values())
+                            for x in results))
+
+    def test_client_archive_matches_published_versions(self):
+        from io import BytesIO
+        from zipfile import ZipFile
+        import hashlib
+        status, _, body = self.request('GET', '/clients/hwc-matlab-client.zip')
+        self.assertEqual(status, 200)
+        with ZipFile(BytesIO(body)) as archive:
+            self.assertEqual(set(archive.namelist()), {'HWC.m', 'hwc_connect.m', 'hwc_reset.m', 'README.md'})
+            for name, endpoint in [('HWC.m', 'client_version'), ('hwc_connect.m', 'launcher_version')]:
+                _, version, _ = self.request('GET', '/api/matlab/' + endpoint)
+                self.assertEqual(hashlib.md5(archive.read(name)).hexdigest(), version['data']['md5'])
+                status, _, downloaded = self.request('GET', '/clients/hwc-matlab-client/' + name)
+                self.assertEqual(status, 200)
+                self.assertEqual(downloaded, archive.read(name))
+        _, _, page = self.request('GET', '/')
+        self.assertIn(b'/clients/hwc-matlab-client.zip', page)
+        self.assertNotIn(b"chdu_connect('http')", page)
 
     def test_bad_payloads_are_json_errors(self):
         failures = []

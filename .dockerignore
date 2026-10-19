@@ -3,3 +3,5 @@ project-notes/
 .venv/
 .DS_Store
 *.socket
+**/auth_config.json
+matlab/files/

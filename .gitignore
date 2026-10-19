@@ -2,3 +2,5 @@
 server_task_data/
 clients/
 auth_manager_config.json
+auth_config.json
+matlab/files/

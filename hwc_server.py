@@ -1,10 +1,12 @@
 from flask import Flask, jsonify
-from flask import request, send_from_directory
+from flask import request, send_from_directory, send_file
 from flask import render_template_string
 import logging
 import os,sys
 import hashlib, pathlib
 import math
+from io import BytesIO
+from zipfile import ZipFile, ZIP_DEFLATED
 from functools import wraps
 from datetime import datetime, timezone
 from pymongo.errors import PyMongoError
@@ -58,7 +60,7 @@ def json_endpoint(handler):
             return api_response(400, 'Expected a JSON object with auth data')
         try:
             return handler(payload)
-        except (InvalidDocument, OverflowError):
+        except (InvalidDocument, OverflowError, UnicodeError):
             return api_response(400, 'Request contains a value that cannot be stored')
         except PyMongoError:
             logging.exception('Database operation failed')
@@ -141,24 +143,36 @@ def set_task(payload):
     case_number = auth.get_case_number(user_id, task_number)
     if case_number is None:
         return api_response(400, 'First you must get this task')
-    count = auth.get_count_attemps(user_id, task_number)
-    if count >= ATTEMPS_LIMIT:
-        return api_response(message="You've run out of tries!(max={:d})\nYour max score:".format(ATTEMPS_LIMIT),
-                            data=auth.get_best_score(user_id, task_number))
     try:
         case = selected.get_case(case_number)
     except ValueError:
         return api_response(409, 'Assigned task variant is invalid; contact the instructor')
     score = case.check(submission['answers'])
     submission = dict(submission, number=task_number)
-    auth.set_task(user_id, case.jsonify(True), submission, score.jsonify(), submitted_at=submitted_at)
-    return api_response(message='You have {:d} attempts left'.format(ATTEMPS_LIMIT - count - 1), data=score.jsonify())
+    remaining = auth.set_task(user_id, case.jsonify(True), submission, score.jsonify(),
+                              submitted_at=submitted_at, attempt_limit=ATTEMPS_LIMIT)
+    if remaining is None:
+        return api_response(message="You've run out of tries!(max={:d})\nYour max score:".format(ATTEMPS_LIMIT),
+                            data=auth.get_best_score(user_id, task_number))
+    return api_response(message='You have {:d} attempts left'.format(remaining), data=score.jsonify())
 
 
 @app.route('/files/<path:filename>', methods=['GET', 'POST'])
 def download(filename):
     uploads = os.path.join('server_task_data', 'files')
     return send_from_directory(directory=uploads, path=filename)
+
+@app.route('/clients/hwc-matlab-client.zip', methods=['GET'])
+def client_archive():
+    archive = BytesIO()
+    root = pathlib.Path('clients/hwc-matlab-client')
+    with ZipFile(archive, 'w', ZIP_DEFLATED) as output:
+        for name in ('HWC.m', 'hwc_connect.m', 'hwc_reset.m', 'README.md'):
+            output.write(root / name, name)
+    archive.seek(0)
+    return send_file(archive, mimetype='application/zip', as_attachment=True,
+                     download_name='hwc-matlab-client.zip')
+
 
 @app.route('/clients/<path:filename>', methods=['GET', 'POST'])
 def get_client(filename):

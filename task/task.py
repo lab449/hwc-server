@@ -88,6 +88,14 @@ class ArrayAnswer(Answer):
         if not isinstance(value, list):
             return None
         try:
+            # Check raw leaves before NumPy can coerce mixed booleans to numbers.
+            leaves = list(value)
+            while leaves:
+                item = leaves.pop()
+                if isinstance(item, list):
+                    leaves.extend(item)
+                elif isinstance(item, bool) or not isinstance(item, (int, float)):
+                    return None
             value = np.asarray(value)
             if value.dtype.kind not in 'iuf' or not np.isfinite(value).all():
                 return None

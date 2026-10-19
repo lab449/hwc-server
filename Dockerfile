@@ -16,7 +16,7 @@ RUN python -m pip install --upgrade pip
 
 # Declaring working directory in our container and download from github
 WORKDIR /home/hwc/apps/hwc-server/clients
-RUN git clone https://github.com/ITMORobotics/hwc-matlab-client.git
+RUN mkdir -p hwc-matlab-client
 
 WORKDIR /home/hwc/apps/hwc-server
 COPY ./requirements.txt ./requirements.txt
@@ -24,9 +24,9 @@ RUN pip3 install -r requirements.txt
 
 COPY ./ ./
 
-RUN git config --global pull.rebase false
+COPY ./matlab/ ./clients/hwc-matlab-client/
 
-CMD ["/bin/bash", "-c", "git -C /home/hwc/apps/hwc-server/clients/hwc-matlab-client pull origin; uwsgi /home/hwc/apps/hwc-server/hwc_server.ini"]
+CMD ["uwsgi", "/home/hwc/apps/hwc-server/hwc_server.ini"]
 
 # # Expose ports
 EXPOSE 5050
