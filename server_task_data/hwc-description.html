@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <script>
+        MathJax = {
+            loader: { load: ['[tex]/enclose'] },
+            tex2jax: {
+                packages: ['base'],        // extensions to use
+                inlineMath: [              // start/end delimiter pairs for in-line math
+                    ['\\(', '\\)']
+                ],
+                displayMath: [             // start/end delimiter pairs for display math
+                    ['$$', '$$'],
+                    ['\\[', '\\]']
+                ],
+                processEscapes: true,      // use \$ to produce a literal dollar sign
+                processEnvironments: true, // process \begin{xxx}...\end{xxx} outside math mode
+                processRefs: true,         // process \ref{...} outside of math mode
+                digits: /^(?:[0-9]+(?:\{,\}[0-9]{3})*(?:\.[0-9]*)?|\.[0-9]+)/,
+                // pattern for recognizing numbers
+                tags: 'none',              // or 'ams' or 'all'
+                tagSide: 'right',          // side for \tag macros
+                tagIndent: '0.8em',        // amount to indent tags
+                useLabelIds: true,         // use label name rather than tag for ids
+                maxMacros: 1000,           // maximum number of macro substitutions per expression
+                maxBuffer: 5 * 1024,       // maximum size for the internal TeX string (5K)
+                baseURL:                   // URL for use with links to tags (when there is a <base> tag in effect)
+                    (document.getElementsByTagName('base').length === 0) ?
+                        '' : String(document.location).replace(/#.*$/, ''),
+                formatError:               // function called when TeX syntax errors occur
+                    (jax, err) => jax.formatError(err)
+            },
+            processEscapes: true
+        };
+    </script>
+    <style>
+        :root {
+            --body-background: #f0f0f0;
+        }
+
+        html {
+            box-sizing: border-box;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: inherit;
+        }
+
+        body {
+            background-color: var(--body-background);
+            margin: 0;
+            padding: clamp(12px, 3vw, 32px);
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.55;
+            color: #333;
+        }
+
+        h1 {
+            font-size: 2rem;
+            line-height: 1.2;
+            margin: 0 0 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            line-height: 1.3;
+            margin: 2.25rem 0 1rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            margin: 1.75rem 0 0.75rem;
+        }
+
+        h4 {
+            font-size: 1.2rem;
+            margin: 1.5rem 0 0.75rem;
+        }
+
+        h5 {
+            font-size: 1.1rem;
+            margin: 1.25rem 0 0.5rem;
+        }
+
+        h6 {
+            font-size: 1rem;
+            margin: 1rem 0 0.5rem;
+        }
+
+        ul,
+        ol,
+        li,
+        section,
+        p {
+            font-size: 1rem;
+        }
+
+        ul,
+        ol {
+            margin: 0 0 1.25rem;
+            padding-left: 1.5rem;
+        }
+
+        p {
+            margin: 0 0 1rem;
+        }
+
+        li {
+            margin: 0.5rem 0;
+            padding-left: 0.25rem;
+        }
+
+        li > p {
+            margin: 0.5rem 0;
+        }
+
+        li > p:first-child {
+            margin-top: 0;
+        }
+
+        main {
+            background-color: #fff;
+            box-sizing: border-box;
+            border-radius: 16px;
+            margin: 0 auto;
+            max-width: 900px;
+            padding: clamp(20px, 4vw, 48px);
+            width: 100%;
+        }
+
+        a {
+            color: #337ab7;
+            text-decoration: none;
+        }
+
+        a:focus,
+        a:hover {
+            color: #23527c;
+            text-decoration: underline;
+        }
+
+        a:focus {
+            outline: 5px auto -webkit-focus-ring-color;
+            outline-offset: -2px;
+        }
+
+        .success {
+            background-color: #dff0d8;
+            border-color: #d6e9c6;
+            color: #3c763d;
+        }
+
+        .info {
+            background-color: #d9edf7;
+            border-color: #bce8f1;
+            color: #31708f;
+        }
+
+        .warning {
+            background-color: #fcf8e3;
+            border-color: #faebcc;
+            color: #8a6d3b;
+        }
+
+        .danger {
+            background-color: #f2dede;
+            border-color: #ebccd1;
+            color: #a94442;
+        }
+
+        .success,
+        .info,
+        .warning,
+        .danger {
+            border: 1px solid transparent;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            padding: 15px;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        li img:not([width="3%"]),
+        p img:not([width="3%"]) {
+            display: block;
+            margin: 1rem 0;
+        }
+
+        blockquote {
+            border-left: 0.25rem solid #ddd;
+            color: #777;
+            font-size: 1rem;
+            margin: 0px;
+            padding: 0 1rem;
+        }
+
+        table {
+            border-spacing: 0;
+            border-collapse: collapse;
+            display: block;
+            margin-top: 0;
+            margin-bottom: 16px;
+            overflow: auto;
+            width: 100%;
+            word-break: keep-all;
+        }
+
+        table tr {
+            border-top: 1px solid #ddd;
+            padding: 6px 13px;
+        }
+
+        table th {
+            border: 1px solid #ddd;
+            padding: 6px 13px;
+        }
+
+        table td {
+            border: 1px solid #ddd;
+            padding: 6px 13px;
+        }
+
+        table tr:nth-child(2n) {
+            background-color: var(--body-background);
+        }
+
+        pre {
+            margin: 0.75rem 0 1.25rem;
+            overflow: auto;
+            font-size: 85%;
+            line-height: 1.45;
+        }
+
+        code {
+            border-radius: 3px;
+            background-color: var(--body-background);
+            padding: 0.15rem 0.35rem;
+        }
+
+        pre code {
+            display: block;
+            padding: 16px;
+            overflow-x: auto;
+        }
+
+        @media (max-width: 600px) {
+            main {
+                border-radius: 12px;
+                padding: 20px 16px;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            h2 {
+                font-size: 1.35rem;
+            }
+
+            ul,
+            ol {
+                padding-left: 1.25rem;
+            }
+        }
+
+        code table tr:nth-child(2n) {
+            background-color: transparent;
+        }
+
+        code.language-mermaid,
+        code.language-sequence,
+        code.language-flow {
+            background-color: transparent;
+            text-align: center;
+        }
+
+        mark {
+            padding: 0.2rem;
+            background-color: #fff1a7;
+        }
+
+        /*---hljs---*/
+        .hljs-comment {
+            color: #708090;
+        }
+
+        .hljs-punctuation,
+        .hljs-tag {
+            color: #444a
+        }
+
+        .hljs-tag .hljs-attr,
+        .hljs-tag .hljs-name {
+            color: #444
+        }
+
+        .hljs-attribute,
+        .hljs-doctag,
+        .hljs-keyword,
+        .hljs-meta .hljs-keyword,
+        .hljs-name,
+        .hljs-selector-tag {
+            color: #07a;
+        }
+
+        .hljs-deletion,
+        .hljs-number,
+        .hljs-quote,
+        .hljs-selector-class,
+        .hljs-selector-id,
+        .hljs-template-tag,
+        .hljs-type {
+            color: #690
+        }
+
+        .hljs-section,
+        .hljs-title {
+            color: #dd4a68;
+        }
+
+        .hljs-link,
+        .hljs-operator,
+        .hljs-regexp,
+        .hljs-selector-attr,
+        .hljs-selector-pseudo,
+        .hljs-symbol,
+        .hljs-template-variable,
+        .hljs-variable {
+            color: #bc6060
+        }
+
+        .hljs-literal {
+            color: #78a960
+        }
+
+        .hljs-addition,
+        .hljs-built_in,
+        .hljs-bullet,
+        .hljs-code {
+            color: #397300
+        }
+
+        .hljs-meta {
+            color: #1f7199
+        }
+
+        .hljs-meta,
+        .hljs-string {
+            color: #690
+        }
+
+        .hljs-emphasis {
+            font-style: italic
+        }
+
+        .hljs-strong {
+            font-weight: 700
+        }
+
+        table.hljs-ln,
+        .hljs-ln td,
+        .hljs-ln tr {
+            /*override table style*/
+            border: 0px;
+            padding: 0px;
+            margin: 0px;
+        }
+
+        .hljs-ln-numbers {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            color: #afafaf !important;
+            border-right: 3px solid #6ce26c !important;
+        }
+
+        .hljs-ln-n {
+            box-sizing: content-box;
+            vertical-align: top;
+            padding: 0px 8px 0px 0px;
+            min-width: 20px;
+            text-align: right;
+        }
+
+        .hljs-ln-code {
+            padding: 0px 0px 0px 16px !important;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1 id="hdu-getting-started" tabindex="-1">HDU Getting started</h1>
+<p>Status of CHDU Lab Checker:</p>
+<!--     <img src="https://i.imgur.com/s50aPvE.png" alt="submit" width="3%"/> **not available** -->
+<p><img src="https://i.imgur.com/XtUlbdX.png" alt="submit" width="3%"/> <strong>available</strong></p>
+<p>Available labs:</p>
+<!-- LAB_AVAILABILITY -->
+<h2 id="installation" tabindex="-1">Installation</h2>
+<ol>
+<li>
+<p>Create new working directory and open matlab here.</p>
+</li>
+<li>
+<p>Download CHDU Lab Checker using matlab Git Project:</p>
+<pre><code>HOME -&gt; New -&gt; Project -&gt; From Git
+</code></pre>
+ <img src="https://i.imgur.com/1SvD4lu.png" alt="From GIT" width="70%"/>
+</li>
+<li>
+<p>Type into <strong>Repository path</strong>: <a href="https://github.com/ITMORobotics/hwc-matlab-client.git">https://github.com/ITMORobotics/hwc-matlab-client.git</a>, and select the working directory in the field <strong>Sansdbox</strong> and click <strong>Retrieve</strong>:<br>
+<img src="https://i.imgur.com/hoOAq5f.png" alt="github" width="95%"/></p>
+</li>
+<li>
+<p>Select project name and submit project creating:<br>
+<img src="https://i.imgur.com/WGze49L.png" alt="submit" width="75%"/></p>
+</li>
+<li>
+<p>Close this window<br>
+<img src="https://i.imgur.com/nSYLPgW.png" alt="submit" width="70%"/></p>
+</li>
+<li>
+<p>Later for openning the project you can use:</p>
+<pre><code>Open -&gt; Recent -&gt; Your Project
+</code></pre>
+ <img src="https://i.imgur.com/5j19zWW.png" alt="submit" width="90%"/>
+</li>
+</ol>
+<h3 id="another-way-(if-you-dont-have-git-upload-pack)" tabindex="-1">Another way (if you dont have git-upload-pack)</h3>
+<p><img src="https://i.imgur.com/CT1H85y.png" alt=""><br>
+If you get this error, you can download client in archive .zip:</p>
+<ol>
+<li>
+<p>Create new working directory and open matlab here.</p>
+</li>
+<li>
+<p>Download <a href="https://github.com/ITMORobotics/hwc-matlab-client/zipball/main/">Client</a></p>
+</li>
+<li>
+<p>Extract to working directory.</p>
+</li>
+<li>
+<p>Open the extracted directory in left window:</p>
+<pre><code>HOME -&gt; Open -&gt; From Folder
+</code></pre>
+<p><img src="https://i.imgur.com/gbh8PeQ.png" alt=""></p>
+</li>
+<li>
+<p>Add to path it and go to the directory:<br>
+<img src="https://i.imgur.com/Ufr4Mjo.png" alt="addfolder" width="100%"/></p>
+</li>
+</ol>
+<h2 id="registration" tabindex="-1">Registration</h2>
+<ol>
+<li>To start doing lab work, you must register in the system. To do this, enter in the Matlab console:<pre><code class="language-python">chdu = chdu_connect()
+</code></pre>
+If you have a problems with SSL Certificate. Please type:<pre><code class="language-python">chdu = chdu_connect('http')
+</code></pre>
+</li>
+<li>Fill in <em>Full name</em> and click <strong>Enter</strong>. After that fill in other required fields:<br>
+<img src="https://i.imgur.com/jcltADj.png" alt="submit2" width="100%"/></li>
+</ol>
+<p>If you have reinstalled client you should use also:</p>
+<pre><code class="language-python">chdu = chdu_connect()
+</code></pre>
+<p>or to connect via http:</p>
+<pre><code class="language-python">chdu = chdu_connect('http')
+</code></pre>
+<p>In this case please repeat your name, id, email and password provided earlier.</p>
+<h2 id="usage" tabindex="-1">Usage</h2>
+<p>After registration you can connect at any time with</p>
+<pre><code class="language-python">chdu = chdu_connect()
+</code></pre>
+<p>or to connect via http:</p>
+<pre><code class="language-python">chdu = chdu_connect('http')
+</code></pre>
+<p>For getting first task(lab) you must type:</p>
+<pre><code class="language-python">task = chdu.get_task(1)
+</code></pre>
+<p>For other tasks(labs) you must type desired number:</p>
+<pre><code class="language-python">task = chdu.get_task(laboratory_number)
+</code></pre>
+<p>The case will be generated on the first call. After that, you can retrieve your task at any time with</p>
+<pre><code class="language-python">task = chdu.get_task(laboratory_number)
+</code></pre>
+<img src="https://i.imgur.com/l8p7nNc.png" alt="task" width="79%"/>
+<p>There is your task. In task structure you can see in variable  <strong>files</strong> associated filenames. In this case: <em>l1_1.pdf</em>. This file contains in folder <strong>files</strong>.</p>
+<p>In struct <strong>parameters</strong> presented input variables for modeling the system described in <em>pdf</em> file:<br>
+<img src="https://i.imgur.com/uFzZEGO.png" alt="task_parameters" width="79%"/></p>
+<p>In struct <strong>answers</strong> presented variables that you must fill instead of <strong>?</strong>:<br>
+<img src="https://i.imgur.com/6OUihVT.png" alt="task_answers" width="79%"/></p>
+<p>When you fill all variables in struct <strong>answers</strong> instead of <strong>?</strong> you can check it with:</p>
+<pre><code class="language-python">chdu.send_task(task)
+</code></pre>
+<img src="https://i.imgur.com/MkJOnrn.png" alt="task_send" width="79%"/>
+<p>You are right if you have nonzero score opposite the corresponding variable. The total score is the sum of all scores. You can also see the number of attempts.</p>
+<h2 id="submission-of-laboratory-work" tabindex="-1">Submission of laboratory work</h2>
+<ol>
+<li>
+<p>Upload the required answers to the CHDU Lab Checking system as above.</p>
+</li>
+<li>
+<p>Please send to <code>hdulab.checker@yandex.ru</code> from email, that you used to register in the CHDU Lab Checker:</p>
+<ul>
+<li>a zip-archive with all matlab files with comments, or in live script, or with some kind of brief report,</li>
+<li>your password for CHDU Lab Checker.</li>
+</ul>
+</li>
+</ol>
+
+    </main>
+    <script id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/highlight.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js@2.6.0/dist/highlightjs-line-numbers.min.js"></script>
+    <!--mermaid-->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <!--sequence-->
+    <script src="https://bramp.github.io/js-sequence-diagrams/js/webfont.js"></script>
+    <script src="https://bramp.github.io/js-sequence-diagrams/js/snap.svg-min.js"></script>
+    <script src="https://bramp.github.io/js-sequence-diagrams/js/underscore-min.js"></script>
+    <script src="https://bramp.github.io/js-sequence-diagrams/js/sequence-diagram-min.js"></script>
+    <!--flowchart-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+    <script src="https://flowchart.js.org/flowchart-latest.js"></script>
+    <script>
+        mermaid.init({ noteMargin: 10 }, document.querySelectorAll(".language-mermaid"));
+        mermaid.initialize({ startOnLoad: true });
+        document.querySelectorAll(".language-sequence")?.forEach((dom, i) => {
+            dom.id = `sequence-${i}`;
+            let content = dom.textContent;
+            dom.textContent = "";
+            Diagram.parse(content).drawSVG(dom.id, { theme: 'simple' });
+        });
+        document.querySelectorAll(".language-flow")?.forEach((dom, i) => {
+            dom.id = `flow-${i}`;
+            let content = dom.textContent;
+            dom.textContent = "";
+            flowchart.parse(content).drawSVG(dom.id);
+        });
+        // https://github.com/highlightjs/highlight.js/blob/main/SUPPORTED_LANGUAGES.md
+        document.querySelectorAll('code')?.forEach((dom) => {
+            let lang = dom.className.match(/language\-([^=]*)?(=?)$/);
+            if (lang && lang[1]) {
+                hljs.highlightElement(dom);
+            }
+            if (lang && lang[2]) {
+                hljs.lineNumbersBlock(dom);
+            }
+        });
+    </script>
+</body>
+
+</html>

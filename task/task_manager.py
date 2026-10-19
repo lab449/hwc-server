@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+from html import escape
 from jsonschema import validate, ValidationError
 from task.task import Task
 from pathlib import Path
@@ -37,4 +38,17 @@ class TaskManager():
             return self.__tasks_list[key]
 
     def generate_description_page(self):
-        return self.__course_description
+        icons = {
+            True: 'https://i.imgur.com/XtUlbdX.png',
+            False: 'https://i.imgur.com/s50aPvE.png',
+        }
+        lab_items = []
+        for lab in self.__task_manager_config['course_tasks']:
+            available = lab['available']
+            status = 'available' if available else 'unavailable'
+            lab_items.append(
+                f'<li>{escape(lab["name"])} '
+                f'<img src="{icons[available]}" alt="{status}" width="3%"></li>'
+            )
+        lab_list = '<ol>\n' + '\n'.join(lab_items) + '\n</ol>'
+        return self.__course_description.replace('<!-- LAB_AVAILABILITY -->', lab_list)
