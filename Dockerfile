@@ -24,7 +24,7 @@ RUN pip3 install -r requirements.txt
 
 COPY ./ ./
 
-RUN git config pull.rebase false
+RUN git config --global pull.rebase false
 
 CMD ["/bin/bash", "-c", "git -C /home/hwc/apps/hwc-server/clients/hwc-matlab-client pull origin; uwsgi /home/hwc/apps/hwc-server/hwc_server.ini"]
 

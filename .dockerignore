@@ -1,0 +1,5 @@
+.git
+project-notes/
+.venv/
+.DS_Store
+*.socket

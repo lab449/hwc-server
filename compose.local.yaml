@@ -1,0 +1,27 @@
+name: hwc-local
+services:
+  hwc:
+    image: hwc-server-local:dev
+    build: .
+    command: ["python3", "wsgi.py"]
+    restart: unless-stopped
+    environment:
+      APP_DEBUG: "False"
+      MONGODB_DATABASE: hwc-db
+      MONGODB_PORT: "27017"
+      MONGODB_HOSTNAME: mongodb
+    ports:
+      - "127.0.0.1:8080:5050"
+    volumes:
+      - ./server_task_data:/home/hwc/apps/hwc-server/server_task_data:ro
+    depends_on:
+      - mongodb
+  mongodb:
+    image: mongo:4.4.6
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27018:27017"
+    volumes:
+      - mongodb-local:/data/db
+volumes:
+  mongodb-local:
