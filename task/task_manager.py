@@ -43,12 +43,14 @@ class TaskManager():
             False: 'https://i.imgur.com/s50aPvE.png',
         }
         lab_items = []
-        for lab in self.__task_manager_config['course_tasks']:
+        for number, lab in enumerate(self.__task_manager_config['course_tasks'], start=1):
             available = lab['available']
             status = 'available' if available else 'unavailable'
             lab_items.append(
-                f'<li>{escape(lab["name"])} '
-                f'<img src="{icons[available]}" alt="{status}" width="3%"></li>'
+                f'<li><span class="lab-availability">'
+                f'<img class="availability-icon" src="{icons[available]}" '
+                f'alt="{status}" width="20" height="20">'
+                f'<span>{number}. {escape(lab["name"])}</span></span></li>'
             )
-        lab_list = '<ol>\n' + '\n'.join(lab_items) + '\n</ol>'
+        lab_list = '<ol class="lab-availability-list" role="list">\n' + '\n'.join(lab_items) + '\n</ol>'
         return self.__course_description.replace('<!-- LAB_AVAILABILITY -->', lab_list)

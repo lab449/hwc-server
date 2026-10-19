@@ -192,10 +192,44 @@
             height: auto;
         }
 
-        li img:not([width="3%"]),
-        p img:not([width="3%"]) {
+        li img:not(.availability-icon):not([width="3%"]),
+        p img:not(.availability-icon):not([width="3%"]) {
             display: block;
             margin: 1rem 0;
+        }
+
+        .availability-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            max-width: none;
+            margin: 0;
+            object-fit: contain;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+
+        .server-availability {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lab-availability-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .lab-availability-list > li {
+            padding-left: 0;
+        }
+
+        .lab-availability {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            max-width: 100%;
+            vertical-align: middle;
         }
 
         blockquote {
@@ -408,7 +442,7 @@
         <h1 id="hdu-getting-started" tabindex="-1">HDU Getting started</h1>
 <p>Status of CHDU Lab Checker:</p>
 <!--     <img src="https://i.imgur.com/s50aPvE.png" alt="submit" width="3%"/> **not available** -->
-<p><img src="https://i.imgur.com/XtUlbdX.png" alt="submit" width="3%"/> <strong>available</strong></p>
+<p class="server-availability"><img class="availability-icon" src="https://i.imgur.com/XtUlbdX.png" alt="" width="20" height="20"/> <strong>available</strong></p>
 <p>Available labs:</p>
 <!-- LAB_AVAILABILITY -->
 <h2 id="installation" tabindex="-1">Installation</h2>
