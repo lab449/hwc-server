@@ -30,6 +30,9 @@ class TaskManager():
                 self.__course_description = file.read()
         
     
+    def __len__(self):
+        return len(self.__tasks_list)
+
     def __getitem__(self, key: int):
         assert (key>=0 and key< len(self.__tasks_list)), "Unknown key"
         if not self.__task_manager_config['course_tasks'][key]['available']:

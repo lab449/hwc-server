@@ -4,6 +4,10 @@ from flask import render_template_string
 import logging
 import os,sys
 import hashlib, pathlib
+import math
+from functools import wraps
+from pymongo.errors import PyMongoError
+from bson.errors import InvalidDocument
 
 from auth import AuthHandler
 
@@ -40,84 +44,114 @@ def root():
 def ok():
     return jsonify(isError= False, message= "OK", statusCode=200, data='')
 
+def api_response(code=200, message='', data=None):
+    # MATLAB webwrite expects the legacy HTTP-200 envelope and checks these fields.
+    return jsonify(isError=(code != 200), statusCode=code, message=message, data=data)
+
+
+def json_endpoint(handler):
+    @wraps(handler)
+    def wrapped():
+        payload = request.get_json(silent=True) if request.is_json else None
+        if not isinstance(payload, dict) or not isinstance(payload.get('auth'), dict):
+            return api_response(400, 'Expected a JSON object with auth data')
+        try:
+            return handler(payload)
+        except (InvalidDocument, OverflowError):
+            return api_response(400, 'Request contains a value that cannot be stored')
+        except PyMongoError:
+            logging.exception('Database operation failed')
+            return api_response(503, 'Database temporarily unavailable')
+    return wrapped
+
+
+def select_task(value):
+    if isinstance(value, bool):
+        raise ValueError('Unknown task number')
+    if isinstance(value, str):
+        if not value.strip().isdigit():
+            raise ValueError('Unknown task number')
+    elif not isinstance(value, (int, float)):
+        raise ValueError('Unknown task number')
+    if isinstance(value, float) and (not math.isfinite(value) or not value.is_integer()):
+        raise ValueError('Unknown task number')
+    number = int(value)
+    if not 1 <= number <= len(task_manager):
+        raise ValueError('Unknown task number')
+    return number, task_manager[number - 1]
+
+
 @app.route('/api/register', methods=['POST'])
-def register():
-    content_type = request.headers.get('Content-Type')
-    if 'application/json' in content_type:
-        user_data = request.json['auth']
-        code, msg = auth.register(user_data)
-        return jsonify(isError=(code!=200), message=msg, statusCode=code, data=msg)
-    return jsonify(isError= True,  message='Comething went wrong', statusCode=400)
+@json_endpoint
+def register(payload):
+    code, message = auth.register(payload['auth'])
+    return api_response(code, message, message)
 
 
 @app.route('/api/login', methods=['POST'])
-def login():
-    content_type = request.headers.get('Content-Type')
-    if 'application/json' in content_type:
-        user_data = request.json['auth']
-        code, msg = auth.auth(user_data)
-        return jsonify(isError=(code!=200), message=msg, statusCode=code, data=msg)
-    return jsonify(isError=True, statusCode=400, message="Something went wrong")
+@json_endpoint
+def login(payload):
+    code, message = auth.auth(payload['auth'])
+    return api_response(code, message)
+
 
 @app.route('/api/gettask', methods=['POST'])
-def get_task():
-    content_type = request.headers.get('Content-Type')
-    if 'application/json' in content_type:
-        try:
-            user_data = request.json['auth']
-            code, msg = auth.auth(user_data)
-            if code!=200:
-                logging.error('Authentification errors: %s',  user_data)
-                return jsonify(isError=True, message=msg, statusCode=code)
-            task_number = int(request.json['number'])
-            case_number = auth.get_case_number(user_data['_id'], task_number)
-            task = task_manager[task_number-1]
-            if not task:
-                return jsonify(isError=True, message='This task is unvailable right now', statusCode=400)
-            if case_number is None:
-                case_number = task.generate_case_number()
-                auth.set_case_number(user_data['_id'], task_number, case_number)
-            case = task.get_case(case_number)
-            return jsonify(isError=True, message='', statusCode=code, data=case.jsonify())
-        except Exception as e: 
-            logging.error('Failed to get task. Error code: %s', str(e))
-            return jsonify(isError= True, message= 'Task not found', statusCode=404)
+@json_endpoint
+def get_task(payload):
+    user_data = payload['auth']
+    code, message = auth.auth(user_data)
+    if code != 200:
+        return api_response(code, message)
+    try:
+        task_number, selected = select_task(payload.get('number'))
+    except ValueError as exc:
+        return api_response(400, str(exc))
+    if selected is None:
+        return api_response(400, 'This task is unavailable right now')
+    user_id = user_data['id']
+    case_number = auth.get_case_number(user_id, task_number)
+    if case_number is None:
+        case_number = auth.set_case_number(user_id, task_number, selected.generate_case_number())
+    try:
+        case = selected.get_case(case_number)
+    except ValueError:
+        return api_response(409, 'Assigned task variant is invalid; contact the instructor')
+    return api_response(data=case.jsonify())
 
-    return jsonify(isError= True, message= 'Something went wrong', statusCode=400)
 
 @app.route('/api/send_task', methods=['POST'])
-def set_task():
-    content_type = request.headers.get('Content-Type')
-    if 'application/json' in content_type:
-        user_data = request.json['auth']
-        code, msg = auth.auth(user_data)
-        if code!=200:
-            return jsonify(isError=True, message=msg, statusCode=code)
-        task_json= request.json['task']
-        try:
-            task_number = int(task_json['number'])
-        except Exception as e: 
-            logging.error('Failed to send task: %s', str(e))
-            return jsonify(isError=True, message='Unknown task number', statusCode=400)
-        
-        count_attemps = auth.get_count_attemps(user_data['_id'], task_number)
-        if count_attemps >= ATTEMPS_LIMIT:
-            best_score = auth.get_best_score(user_data['_id'], task_number)
-            return jsonify(isError=False, message= 'You\'ve run out of tries!(max={:d})\nYour max score:'.format(ATTEMPS_LIMIT), statusCode=200, data=best_score)
+@json_endpoint
+def set_task(payload):
+    user_data = payload['auth']
+    code, message = auth.auth(user_data)
+    if code != 200:
+        return api_response(code, message)
+    submission = payload.get('task')
+    if not isinstance(submission, dict) or not isinstance(submission.get('answers'), dict):
+        return api_response(400, 'Expected a task object with an answers object')
+    try:
+        task_number, selected = select_task(submission.get('number'))
+    except ValueError as exc:
+        return api_response(400, str(exc))
+    if selected is None:
+        return api_response(400, 'This task is unavailable right now')
+    user_id = user_data['id']
+    case_number = auth.get_case_number(user_id, task_number)
+    if case_number is None:
+        return api_response(400, 'First you must get this task')
+    count = auth.get_count_attemps(user_id, task_number)
+    if count >= ATTEMPS_LIMIT:
+        return api_response(message="You've run out of tries!(max={:d})\nYour max score:".format(ATTEMPS_LIMIT),
+                            data=auth.get_best_score(user_id, task_number))
+    try:
+        case = selected.get_case(case_number)
+    except ValueError:
+        return api_response(409, 'Assigned task variant is invalid; contact the instructor')
+    score = case.check(submission['answers'])
+    submission = dict(submission, number=task_number)
+    auth.set_task(user_id, case.jsonify(True), submission, score.jsonify())
+    return api_response(message='You have {:d} attempts left'.format(ATTEMPS_LIMIT - count - 1), data=score.jsonify())
 
-        case_number = auth.get_case_number(user_data['_id'], task_number)
-        if case_number is None:
-            return jsonify(isError= True, message= 'First you must get this task. You may have entered the wrong task number', statusCode=400)
-
-        task = task_manager[task_number-1]
-        if not task:
-            return jsonify(isError=True, message='This task is unvailable right now', statusCode=400)
-        case = task.get_case(case_number)
-        score = case.check(task_json['answers'])
-        auth.set_task(user_data['_id'], case.jsonify(True), task_json, score.jsonify())
-        return jsonify(isError= False, message='You have {:d} attempts left'.format(ATTEMPS_LIMIT-count_attemps-1), statusCode=code, data=score.jsonify())
-        
-    return jsonify(isError= True, message= 'Something went wrong', statusCode=400)
 
 @app.route('/files/<path:filename>', methods=['GET', 'POST'])
 def download(filename):
