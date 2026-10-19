@@ -455,21 +455,20 @@
 <p>The maintained client sources are in <a href="https://github.com/lab449/hwc-server/tree/main/matlab">lab449/hwc-server/matlab</a>.</p>
 <h2 id="registration" tabindex="-1">Registration</h2>
 <ol>
-<li>To start doing lab work, you must register in the system. To do this, enter in the Matlab console:<pre><code class="language-python">chdu = hwc_connect('https://dss.hdu.vedyakov.com')
+<li>To start doing lab work, you must register in the system. To do this, enter in the Matlab console:<pre><code class="language-python">chdu = hwc_connect()
 </code></pre>
-HTTPS certificate verification must remain enabled. If MATLAB reports a certificate error, update its trusted root certificates.
 </li>
 <li>Fill in <em>Full name</em> and click <strong>Enter</strong>. After that fill in other required fields:<br>
 <img src="https://i.imgur.com/jcltADj.png" alt="submit2" width="100%"/></li>
 </ol>
 <p>If you have reinstalled client you should use also:</p>
-<pre><code class="language-python">chdu = hwc_connect('https://dss.hdu.vedyakov.com')
+<pre><code class="language-python">chdu = hwc_connect()
 </code></pre>
 
 <p>In this case please repeat your name, id, email and password provided earlier.</p>
 <h2 id="usage" tabindex="-1">Usage</h2>
 <p>After registration you can connect at any time with</p>
-<pre><code class="language-python">chdu = hwc_connect('https://dss.hdu.vedyakov.com')
+<pre><code class="language-python">chdu = hwc_connect()
 </code></pre>
 
 <p>For getting first task(lab) you must type:</p>

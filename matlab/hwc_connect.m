@@ -1,6 +1,6 @@
 function hwc = hwc_connect(server)
     if nargin == 0
-        server = 'https://dss.hdu.vedyakov.com';
+        server = 'http://dss.hdu.vedyakov.com';
     end
     hwc = nan;
     options = weboptions('ContentType', 'auto', ...
@@ -34,7 +34,7 @@ function hwc = hwc_connect(server)
             return
         end
     catch err
-        warning('HWC:ConnectionFailed', 'Cannot update the client securely: %s', err.message);
+        warning('HWC:ConnectionFailed', 'Cannot update the client: %s', err.message);
         return
     end
     hwc = HWC(server);
