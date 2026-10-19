@@ -6,6 +6,7 @@ import os,sys
 import hashlib, pathlib
 import math
 from functools import wraps
+from datetime import datetime, timezone
 from pymongo.errors import PyMongoError
 from bson.errors import InvalidDocument
 
@@ -122,6 +123,7 @@ def get_task(payload):
 @app.route('/api/send_task', methods=['POST'])
 @json_endpoint
 def set_task(payload):
+    submitted_at = datetime.now(timezone.utc)
     user_data = payload['auth']
     code, message = auth.auth(user_data)
     if code != 200:
@@ -149,7 +151,7 @@ def set_task(payload):
         return api_response(409, 'Assigned task variant is invalid; contact the instructor')
     score = case.check(submission['answers'])
     submission = dict(submission, number=task_number)
-    auth.set_task(user_id, case.jsonify(True), submission, score.jsonify())
+    auth.set_task(user_id, case.jsonify(True), submission, score.jsonify(), submitted_at=submitted_at)
     return api_response(message='You have {:d} attempts left'.format(ATTEMPS_LIMIT - count - 1), data=score.jsonify())
 
 

@@ -1,5 +1,6 @@
 """Real HTTP + MongoDB checks; only a disposable hwc_e2e_* database is written."""
 import concurrent.futures
+from datetime import datetime, timedelta, timezone
 import http.client
 import json
 import os
@@ -18,7 +19,7 @@ class ApiE2E(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.db_name = 'hwc_e2e_' + uuid.uuid4().hex
-        cls.mongo = MongoClient(os.environ['MONGODB_HOSTNAME'], int(os.environ['MONGODB_PORT']))
+        cls.mongo = MongoClient(os.environ['MONGODB_HOSTNAME'], int(os.environ['MONGODB_PORT']), tz_aware=True)
         cls.db = cls.mongo[cls.db_name]
         cls.config = json.loads(Path('server_task_data/tasks_info.json').read_text())
         cls.tasks = [json.loads(Path(t['filepath']).read_text()) for t in cls.config['course_tasks']]
@@ -182,6 +183,41 @@ class ApiE2E(unittest.TestCase):
         self.assertEqual(last['data']['total_score'],score)
         self.assertEqual(self.db.StudentsAttempts.count_documents({'id_student':self.user['id']}),40)
         self.assertTrue(all(type(x['task_out']['number']) is int for x in self.db.StudentsAttempts.find({'id_student':self.user['id']})))
+
+    def test_submission_timestamp_is_server_utc(self):
+        self.assign(1, 0)
+        before = datetime.now(timezone.utc) - timedelta(milliseconds=1)
+        self.good('/api/send_task', {
+            'auth': self.user,
+            'submitted_at': '1900-01-01T00:00:00Z',
+            'task': {'number': 1, 'answers': {}, 'submitted_at': '1900-01-01T00:00:00Z'},
+        })
+        after = datetime.now(timezone.utc)
+        row = self.db.StudentsAttempts.find_one({'id_student': self.user['id']})
+        submitted_at = row['submitted_at']
+        self.assertIsInstance(submitted_at, datetime)
+        self.assertEqual(submitted_at.utcoffset(), timedelta(0))
+        self.assertGreaterEqual(submitted_at, before)
+        self.assertLessEqual(submitted_at, after)
+
+    def test_classroom_students_share_one_ip(self):
+        def submit(student_number):
+            user = dict(self.user, id=202600000 + student_number)
+            self.good('/api/register', {'auth': user})
+            # Every connection uses the same 127.0.0.1 source IP, without X-Forwarded-For.
+            self.good('/api/gettask', {'auth': user, 'number': 1})
+            # Grade that student's actual assigned variant.
+            assignment = self.db.StudentsCases.find_one({'_id': user['id']})['task1']
+            assigned = self.tasks[0]['cases'][assignment]
+            student_answers = {k: v['true_value'] for k, v in assigned['answers'].items()}
+            result = self.good('/api/send_task', {
+                'auth': user, 'task': {'number': 1, 'answers': student_answers}})
+            self.assertEqual(result['data']['total_score'],
+                             sum(v['score'] for v in assigned['answers'].values()))
+            self.assertEqual(self.db.StudentsAttempts.count_documents({'id_student': user['id']}), 1)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+            list(pool.map(submit, range(30)))
 
     def test_submit_before_assignment(self):
         _,obj,_=self.request('POST','/api/send_task',{'auth':self.user,'task':{'number':1,'answers':{}}})

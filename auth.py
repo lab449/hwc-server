@@ -1,5 +1,6 @@
 from typing import Tuple
 import hmac
+from datetime import datetime
 from pymongo import MongoClient, ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from jsonschema import validate, ValidationError
@@ -104,8 +105,9 @@ class AuthHandler:
     def get_count_attemps(self, user_id: int, task_number: int):
         return self.__task_db.count_documents(self.__attempt_query(user_id, task_number))
 
-    def set_task(self, user_id: int, task_in: dict, task_out: dict, score: dict) -> bool:
-        self.__task_db.insert_one({'id_student': user_id, 'task_in': task_in, 'task_out': task_out, 'score': score})
+    def set_task(self, user_id: int, task_in: dict, task_out: dict, score: dict, submitted_at: datetime) -> bool:
+        self.__task_db.insert_one({'id_student': user_id, 'task_in': task_in, 'task_out': task_out,
+                                   'score': score, 'submitted_at': submitted_at})
         return True
 
     def get_case_number(self, user_id: int, task_number: int):
